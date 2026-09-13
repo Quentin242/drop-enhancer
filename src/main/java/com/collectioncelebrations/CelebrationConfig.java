@@ -371,7 +371,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "fileCommon", name = "Low / Common WAV",
-				description = "Shared by collection and drop sounds at this tier. Local WAV filename; blank means silent", section = rarity,
+				description = "Shared by collection and drop sounds at this tier. Bundled or local WAV filename; blank means silent", section = rarity,
 				position = 10)
 	default String fileCommon()
 	{
@@ -394,7 +394,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "fileUncommon", name = "Medium / Uncommon WAV",
-				description = "Shared by collection and drop sounds at this tier. Local WAV filename; blank means silent", section = rarity,
+				description = "Shared by collection and drop sounds at this tier. Bundled or local WAV filename; blank means silent", section = rarity,
 				position = 16)
 	default String fileUncommon()
 	{
@@ -417,7 +417,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "fileRare", name = "High / Rare WAV",
-				description = "Shared by collection and drop sounds at this tier. Local WAV filename; blank means silent", section = rarity,
+				description = "Shared by collection and drop sounds at this tier. Bundled or local WAV filename; blank means silent", section = rarity,
 				position = 22)
 	default String fileRare()
 	{
@@ -440,7 +440,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "fileVeryRare", name = "Highest / Very rare WAV",
-				description = "Shared by collection and drop sounds at this tier. Local WAV filename; blank means silent", section = rarity,
+				description = "Shared by collection and drop sounds at this tier. Bundled or local WAV filename; blank means silent", section = rarity,
 				position = 28)
 	default String fileVeryRare()
 	{
@@ -463,7 +463,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "filePet", name = "Pet WAV file",
-				description = "Shared by collection and drop sounds at this tier. Local WAV filename; blank means silent", section = rarity,
+				description = "Shared by collection and drop sounds at this tier. Bundled or local WAV filename; blank means silent", section = rarity,
 				position = 33)
 	default String filePet()
 	{

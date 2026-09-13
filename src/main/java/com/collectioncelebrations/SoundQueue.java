@@ -221,7 +221,7 @@ class SoundQueue
 	javax.sound.sampled.Clip openPreviewClip(File file) throws Exception
 	{
 		javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
-		try (javax.sound.sampled.AudioInputStream input = javax.sound.sampled.AudioSystem.getAudioInputStream(file))
+		try (javax.sound.sampled.AudioInputStream input = SoundResources.open(file))
 		{
 			clip.open(input);
 			return clip;

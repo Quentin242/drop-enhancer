@@ -1,0 +1,48 @@
+{
+  "pack": "UniversalAudioSFX",
+  "permission": "Maintainer reports author permission on 2026-09-14; remove the bundled audio if permission changes. Audio is not BSD-licensed.",
+  "files": [
+    {
+      "file": "botssouls-common.wav",
+      "source": "RewardsAndLootsSoundEffects/ReceiveItem01/SFX_ReceiveItemUIv2.wav",
+      "sha256": "9bb68a4c946246b0249bf5cc9f0989690523c21095672099f3778d5b33bd25ec",
+      "durationSeconds": 0.24,
+      "changes": "Short subtle excerpt, peak 30%, 90ms fade, leading silence trimmed; original unchanged; not auditioned"
+    },
+    {
+      "file": "botssouls-uncommon.wav",
+      "source": "RewardsAndLootsSoundEffects/PickItem01/SFX_PickItemv1.wav",
+      "sha256": "6799856f2bc27756622bfe36e072952abf7292e69269fdd85eb225ebf57d55a6",
+      "durationSeconds": 0.85,
+      "changes": "Trimmed leading silence and bounded excerpt; fade-out and gain adjustment; 2.4kHz low-pass for softer pickup; not auditioned"
+    },
+    {
+      "file": "botssouls-rare.wav",
+      "source": "RewardsAndLootsSoundEffects/FindCrystal01/SFX_FindCrystalCompleteMusic02v1.wav",
+      "sha256": "bf1dd4cbc3e13f114d975e1ed5948ada7a41ff715d26f4bb4033d5c4d103fe22",
+      "durationSeconds": 2.43,
+      "changes": "Removed 0.0075s leading silence; gain 1.755; source unchanged; not auditioned"
+    },
+    {
+      "file": "botssouls-veryrare.wav",
+      "source": "RewardsAndLootsSoundEffects/LevelUp01/SFX_LevelUpv3.wav",
+      "sha256": "b76c249a3a1f90c1ecbf5755830028f5207cf724d69f6795f624e223402b52eb",
+      "durationSeconds": 3.234,
+      "changes": "Trimmed leading silence and bounded excerpt; fade-out and gain adjustment; not auditioned"
+    },
+    {
+      "file": "botssouls-pet.wav",
+      "source": "RewardsAndLootsSoundEffects/FindEpicItem02/SFX_FindEpicItemNoWhooshMusic01v1.wav",
+      "sha256": "b0858b9f606fb43cea7f6a3ae9c1f3473a560678bcd477f423b0951fb0f6d65f",
+      "durationSeconds": 5.875,
+      "changes": "Previous Very rare selection, unchanged"
+    },
+    {
+      "file": "botssouls-unlock.wav",
+      "source": "RewardsAndLootsSoundEffects/ReceiveItem01/SFX_ReceiveItemMusic02v1.wav",
+      "sha256": "fda04427f8348d87963217c6ef7cce1caa1847ec7010ba6bd2747d3101592403",
+      "durationSeconds": 1.1,
+      "changes": "Short ReceiveItem Music02 fanfare candidate, 1.10s, peak normalization 28%, smooth cosine fade over final 300ms; leading silence trimmed; source unchanged; not auditioned; amplitude reduced by 20% (about -1.94 dB), duration and fade unchanged; added +4 dB low-shelf bass at 180 Hz, same duration/fade; verified no clipping; not auditioned; restored melodic fanfare instead of impact, additional +2 dB bass shelf at 220 Hz; no clipping; not auditioned"
+    }
+  ]
+}
