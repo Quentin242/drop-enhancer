@@ -2,7 +2,7 @@
  * BSD-2-Clause; full terms are in licenses/custom-sounds.txt. */
 package com.collectioncelebrations;
 
-import net.runelite.api.*;
+import net.runelite.api.ItemComposition;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;

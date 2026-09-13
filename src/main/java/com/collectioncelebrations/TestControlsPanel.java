@@ -1,10 +1,20 @@
 /* Copyright (c) 2026 maiz. BSD-2-Clause; see LICENSE. */
 package com.collectioncelebrations;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.util.function.BiConsumer;
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingWorker;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.ColorScheme;
 

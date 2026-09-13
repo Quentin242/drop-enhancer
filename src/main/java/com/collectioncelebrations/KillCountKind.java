@@ -10,7 +10,8 @@ import lombok.RequiredArgsConstructor;
 /** Count kind inferred from game chat, with concise source labels for clues and raids. */
 @Getter
 @RequiredArgsConstructor
-public enum KillCountKind {
+public enum KillCountKind
+{
 	/** The default, and the fallback for anything unrecognised. */
 	KILLS("Kills: "),
 	/** Chest openings, which name no verb at all ("Your Barrows chest count is:"). */
