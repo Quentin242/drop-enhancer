@@ -2,25 +2,12 @@
  * BSD-2-Clause; full terms are in licenses/enhanced.txt. */
 package com.collectioncelebrations;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-/**
- * What the number attached to an unlock counts, and the panel label that says so. Derived from the
- * chat wording rather than a per-boss table (see {@link KillCountTracker}), so a new activity picks
- * up the right label as long as it phrases its message like an existing one.
- * <p>Where the kind alone would leave the activity ambiguous, {@link #labelFor} names the source
- * instead - see AGENTS.md.
- * <p>Labels carry their own trailing space, matching the other panel stats. Keep them short: the
- * panel draws them in roughly 129px (see {@code CollectionLogOverlay#cornerTextMaxWidth}), which
- * "Beginner caskets: ", the widest, comes within 7px of. {@code KillCountLabelWidthTest} enforces
- * it.
- */
+/** Count kind inferred from game chat, with concise source labels for clues and raids. */
 @Getter
 @RequiredArgsConstructor
 public enum KillCountKind {
@@ -59,7 +46,7 @@ public enum KillCountKind {
 
 	// A table rather than a suffix strip of the source name: the raw names are far over the label
 	// budget ("Tombs of Amascut: Expert Mode: " measures 216px), so each abbreviation is written to
-	// fit. See AGENTS.md.
+	// fit.
 	private static final Map<String, String> RAID_LABELS =
 		Map.ofEntries(Map.entry("chambers of xeric", "CoX completions: "), Map.entry("chambers of xeric challenge mode", "CoX CM: "),
 					  Map.entry("theatre of blood", "ToB completions: "), Map.entry("theatre of blood: entry mode", "ToB Entry: "),
@@ -71,9 +58,7 @@ public enum KillCountKind {
 	/**
 	 * @param source the correlated kill's source name, or null when no kill was correlated
 	 * @return a label naming {@code source} where the generic one would leave the activity
-	 *         ambiguous - clue tiers and raid difficulty modes - else {@link #getLabel()}. See
-	 *         AGENTS.md for why only those two, and why the label names the casket opened rather
-	 *         than the item's own tabs.
+	 *         ambiguous - clue tiers and raid difficulty modes - else {@link #getLabel()}.
 	 */
 	public String labelFor(String source)
 	{
@@ -93,19 +78,4 @@ public enum KillCountKind {
 		return RAID_LABELS.getOrDefault(normalized, label);
 	}
 
-	/**
-	 * @return every label the panel can draw, for the width test that keeps them inside the budget
-	 *         documented above.
-	 */
-	static Collection<String> allLabels()
-	{
-		List<String> labels = new ArrayList<>();
-		for (KillCountKind kind : values())
-		{
-			labels.add(kind.label);
-		}
-		labels.addAll(CLUE_CASKET_LABELS.values());
-		labels.addAll(RAID_LABELS.values());
-		return labels;
-	}
 }

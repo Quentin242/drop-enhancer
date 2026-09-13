@@ -13,16 +13,14 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 
 /**
  * Resolves a collection log item's rarity tier from completion percentage and value, combined per
  * the configured {@link RarityBasis}.
- * <p>See "This Plugin: Rarity Tiers" in AGENTS.md for why value uses absolute gp cutoffs rather than
- * a percentile, and for the drop-rate and pet fallbacks.
+ * Value uses absolute GP cutoffs; completion and combination use population percentiles.
+ * See README.md for missing-data and pet behavior.
  */
-@Slf4j
 @Singleton
 public class RarityResolver
 {
@@ -63,18 +61,8 @@ public class RarityResolver
 	}
 
 	/**
-	 * @return the pet's item id, or {@code null} if {@code name} isn't a known pet (i.e. no dataset
-	 *         entry has it tagged with the "All Pets" tab)
-	 */
-	Integer petIdForName(String name)
-	{
-		return completionData.petIdByName.get(name);
-	}
-
-	/**
 	 * @return the item id the wiki dataset records for {@code name}, or {@code null} if it isn't a
-	 *         known collection log item. {@link ItemIdResolver}'s last-resort check - where several
-	 *         ids share a name the lowest wins, which is why it runs last.
+	 *         known collection log item. Where several IDs share a name the lowest wins.
 	 */
 	public Integer datasetIdForName(String name)
 	{
@@ -92,25 +80,7 @@ public class RarityResolver
 	}
 
 	/**
-	 * @param count how many distinct item ids to return
-	 * @return up to {@code count} distinct, randomly chosen item ids from the collection log
-	 *         completion dataset (fewer if the dataset is smaller than {@code count}, empty if it
-	 *         failed to load). Used by the "::clogtest" dev command.
-	 */
-	public List<Integer> randomItemIds(int count)
-	{
-		CompletionData data = completionData;
-		if (data.ids.isEmpty() || count <= 0)
-		{
-			return List.of();
-		}
-		List<Integer> shuffled = new ArrayList<>(data.ids);
-		Collections.shuffle(shuffled, ThreadLocalRandom.current());
-		return shuffled.subList(0, Math.min(count, shuffled.size()));
-	}
-
-	/**
-	 * @param tier which tier to pick from; must not be {@link PreviewTier#NONE} (callers gate first)
+	 * @param tier which non-null tier to pick from
 	 * @return a random item id matching {@code tier}, or {@code null} if none is available.
 	 *         {@link PreviewTier#PET} draws from the pet name index, since pets never enter
 	 *         {@link CompletionData#ids}. Other tiers scan a shuffled list, resolving each until one
@@ -157,7 +127,7 @@ public class RarityResolver
 	}
 
 	/**
-	 * @param itemId resolved item id, or -1 if it couldn't be resolved (see ItemIdResolver). Falls
+	 * @param itemId resolved item id, or -1 if it could not be resolved. Falls
 	 *                back to a value-score-only composite using price 0 in that case, same as an
 	 *                item with no GE price at all.
 	 */
@@ -431,8 +401,7 @@ public class RarityResolver
 	}
 
 	/**
-	 * One item's entry in collection-log.json. comp is null for items the wiki hasn't scored yet
-	 * (see the osrs-collection-log-data repo's generate-collection-log.py).
+	 * One item's entry in collection-log.json. comp is null for items the wiki has not scored yet.
 	 */
 	static final class CompletionEntry
 	{
@@ -459,7 +428,7 @@ public class RarityResolver
 				raw.forEach((id, entry) -> parsed.put(Integer.parseInt(id), entry));
 			}
 			this.byId = Collections.unmodifiableMap(parsed);
-			// Only scored ids: the "::clogtest" dev command should only test items that have one.
+			// Preview candidates need a completion score; pets use their separate index.
 			this.ids = parsed.entrySet()
 						   .stream()
 						   .filter(entry -> entry.getValue().comp != null)

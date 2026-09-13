@@ -20,8 +20,6 @@ import net.runelite.client.util.Text;
 /**
  * Stores the kill count from the most recent "Your X count is: N" chat message, for the plugin to
  * attach to an unlock from the same kill.
- * <p>See "This Plugin: Kill Count Correlation" in AGENTS.md for why correlation is by name rather
- * than by time, and for the chat-wording quirks the patterns below handle.
  */
 @Singleton
 public class KillCountTracker
@@ -62,7 +60,7 @@ public class KillCountTracker
 	private static final String SCROLL_CASES = "scroll cases";
 
 	// The casket message never says the drop was a rare one, so these are matched by suffix, the
-	// same way as the two pooled tabs above. See AGENTS.md.
+	// same way as the two pooled tabs above.
 	private static final String RARE_TAB_SUFFIX = " treasure trails (rare)";
 
 	private static final String ARTICLE_PREFIX = "the ";
@@ -96,7 +94,7 @@ public class KillCountTracker
 
 	// Both forms the game emits: the <col=...> tag and the @mes_hl_red@ macro. The two render
 	// identically in the chatbox, so a pattern written against one silently never matches the other
-	// - found by reading raw messages in a client log. See AGENTS.md.
+	// - found by reading raw messages in a client log.
 	private static final Pattern COLOUR_MARKUP_PATTERN = Pattern.compile("<[^<>]*>|@[a-zA-Z0-9_]+@");
 
 	private long lastUpdateMillis;
@@ -104,8 +102,7 @@ public class KillCountTracker
 	private int lastKillCount;
 	private KillCountKind lastKind;
 
-	// HOPPING is excluded on purpose - a hop keeps the same character, and deferred loot legitimately
-	// survives one. See AGENTS.md.
+	// CelebrationPlugin resets this tracker on logout, login, connection loss and world hops.
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)
 	{
@@ -129,7 +126,7 @@ public class KillCountTracker
 	public void onChatMessage(ChatMessage chatMessage)
 	{
 		// Every count message observed in game arrives on one of these two. Widening this gate is not
-		// the fix for a count that isn't picked up - check the colour markup first. See AGENTS.md.
+		// the fix for a count that isn't picked up - check the colour markup first.
 		if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE && chatMessage.getType() != ChatMessageType.SPAM)
 		{
 			return;
@@ -248,7 +245,7 @@ public class KillCountTracker
 	// matchesSource can't reach: the first two aren't split by clue difficulty at all, and a "(Rare)"
 	// tab name is longer than the name the casket message reconstructs, so a substring search for it
 	// can never hit. Kept separate from matchesSource/BOSS_ALIASES, which are both about a single
-	// fixed tab per source. See AGENTS.md.
+	// fixed tab per source.
 	private boolean isClueWildcardMatch(String normalizedSource)
 	{
 		return lastKind == KillCountKind.COMPLETIONS && lastBoss.endsWith("Treasure Trails") &&

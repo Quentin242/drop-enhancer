@@ -5,7 +5,7 @@ package com.collectioncelebrations;
 /**
  * Maps a wiki dataset item name to the collection log slot name the unlock chat message uses.
  * <p>Shared by the completion and drop-rate datasets, which are both generated from the wiki and
- * both looked up by the name out of that message. See "This Plugin: Rarity Tiers" in AGENTS.md.
+ * both looked up by the name out of that message.
  */
 public final class CollectionLogSlotNames
 {

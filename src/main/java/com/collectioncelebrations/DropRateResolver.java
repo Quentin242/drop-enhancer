@@ -9,15 +9,8 @@ import java.util.TreeMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 
-/**
- * Resolves how likely a collection log item was to drop from a given source, per kill, from a
- * dataset generated offline (see the osrs-collection-log-data repo's generate-drop-rates.py) and
- * fetched at runtime by {@link RemoteDropRateUpdater} (see its javadoc). Starts out empty until that
- * first fetch completes.
- */
-@Slf4j
+/** Resolves source-specific drop probabilities from optional user-local data loaded by WikiRarity. */
 @Singleton
 public class DropRateResolver
 {
@@ -31,9 +24,8 @@ public class DropRateResolver
 	}
 
 	/**
-	 * Replaces the dataset with a freshly fetched or cached copy - called by
-	 * {@link RemoteDropRateUpdater} once it has a parsed, non-empty replacement. Safe to call from
-	 * any thread; readers always see either the old or new dataset, never a partial one.
+	 * Replaces the dataset with a parsed local copy. Safe to call from any thread;
+	 * readers always see either the old or new dataset, never a partial one.
 	 */
 	void reload(Map<String, Map<String, Double>> raw)
 	{
