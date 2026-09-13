@@ -1,0 +1,37 @@
+plugins { id 'java' }
+repositories {
+    maven { url = 'https://repo.runelite.net'; content { includeGroupByRegex('net\\.runelite.*') } }
+    mavenCentral()
+}
+def runeLiteVersion = 'latest.release'
+dependencies {
+    compileOnly "net.runelite:client:${runeLiteVersion}"
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+    testImplementation "net.runelite:client:${runeLiteVersion}"
+    testImplementation "net.runelite:jshell:${runeLiteVersion}"
+}
+group = 'com.collectioncelebrations'
+version = '0.1.0'
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release.set(11) }
+tasks.register('run', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.collectioncelebrations.CelebrationPluginTest'
+    jvmArgs '-ea'
+    args '--developer-mode', '--debug'
+}
+
+// Prepare the development launcher without starting RuneLite or touching login data.
+tasks.register('writeDevClasspath') {
+    dependsOn testClasses
+    def destination = layout.buildDirectory.file('dev/classpath.txt')
+    inputs.files(sourceSets.test.runtimeClasspath)
+    outputs.file(destination)
+    doLast {
+        def file = destination.get().asFile
+        file.parentFile.mkdirs()
+        file.text = sourceSets.test.runtimeClasspath.asPath
+    }
+}

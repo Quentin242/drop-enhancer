@@ -1,0 +1,733 @@
+/* Copyright (c) 2026 maiz. BSD-2-Clause; see LICENSE.
+ * Collection unlock matching and native popup paint hiding adapted from SnakeSteak's
+ * Collection Log Popup Enhanced; see licenses/enhanced.txt. */
+package com.collectioncelebrations;
+
+import com.google.inject.Provides;
+import java.util.*;
+import javax.inject.Inject;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarClientID;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStack;
+import net.runelite.client.plugins.*;
+import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
+import net.runelite.client.plugins.loottracker.LootTrackerPlugin;
+import net.runelite.client.plugins.loottracker.LootReceived;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.Text;
+import net.runelite.api.widgets.Widget;
+
+@PluginDescriptor(name = "Drop Enhancer", description = "Collection log, repeat drop popups and custom sounds",
+				  conflicts = {"Collection Log Popup Enhanced", "Custom Sounds"}, enabledByDefault = false)
+@PluginDependency(GroundItemsPlugin.class)
+@PluginDependency(LootTrackerPlugin.class)
+public class CelebrationPlugin extends Plugin
+{
+	@Inject
+	net.runelite.client.ui.ClientToolbar toolbar;
+	private net.runelite.client.ui.NavigationButton testNavigation;
+
+	// collection_delayed_transmit; no named constant is exposed by RuneLite ScriptID.
+	private static final int COLLECTION_DELAYED_TRANSMIT = 4100;
+	private static final String UNLOCK = "New item added to your collection log: ";
+	private static final int[] PAINT = {InterfaceID.NotificationDisplay.BACKGROUND, InterfaceID.NotificationDisplay.FRAME,
+										InterfaceID.NotificationDisplay.TITLE,		InterfaceID.NotificationDisplay.TITLE_TEXT,
+										InterfaceID.NotificationDisplay.MAIN,		InterfaceID.NotificationDisplay.MAIN_TEXT};
+	@Inject
+	Client client;
+	@Inject
+	ConfigManager configManager;
+	@Inject
+	ClientThread clientThread;
+	private volatile boolean running;
+	private final RevealQueue<Celebration> previews = new RevealQueue<>();
+	@Inject
+	EventBus events;
+	@Inject
+	OverlayManager overlays;
+	@Inject
+	CelebrationOverlay overlay;
+	@Inject
+	CelebrationConfig config;
+	@Inject
+	ItemManager items;
+	@Inject
+	CaseGate gate;
+	@Inject
+	SoundQueue sounds;
+	@Inject
+	CustomSoundEvents custom;
+	@Inject
+	KillCountTracker kills;
+	@Inject
+	WikiRarity wiki;
+	private final CollectionLedger ledger = new CollectionLedger();
+	private final RevealQueue<Celebration> pending = new RevealQueue<>();
+	private final Map<String, Integer> names = new HashMap<>();
+	// Binary membership from genuine unlocks; never an inferred lifetime quantity.
+	private final Set<String> knownLoggedNames = new HashSet<>();
+	private final Set<Widget> hiddenPaint = Collections.newSetFromMap(new IdentityHashMap<>());
+	private final Map<String, Celebration> recentLoot = new HashMap<>();
+	private long sequence;
+	private long lastAudioGroup = -1;
+	long now()
+	{
+		return System.currentTimeMillis();
+	}
+
+	@Provides
+	CelebrationConfig provideConfig(ConfigManager manager)
+	{
+		return manager.getConfig(CelebrationConfig.class);
+	}
+	@Override
+	protected void startUp()
+	{
+		reset();
+		wiki.start();
+		sounds.start();
+		custom.startUp();
+		events.register(custom);
+		overlays.add(overlay);
+		gate.refresh();
+		running = true;
+		javax.swing.SwingUtilities.invokeLater(() -> {
+			if (!running || testNavigation != null)
+			{
+				return;
+			}
+			TestControlsPanel panel = new TestControlsPanel((action, tier)
+																-> clientThread.invokeLater(() -> {
+				if (running)
+				{
+					testAction(action, tier);
+				}
+			}),
+															configManager);
+			testNavigation = net.runelite.client.ui.NavigationButton.builder()
+								 .tooltip("Drop Enhancer tests")
+								 .icon(TestControlsPanel.icon())
+								 .panel(panel)
+								 .priority(8)
+								 .build();
+			toolbar.addNavigation(testNavigation);
+		});
+	}
+	@Override
+	protected void shutDown()
+	{
+		running = false;
+		javax.swing.SwingUtilities.invokeLater(() -> {
+			if (testNavigation != null)
+			{
+				toolbar.removeNavigation(testNavigation);
+				testNavigation = null;
+			}
+		});
+
+		wiki.stop();
+		events.unregister(custom);
+		custom.shutDown();
+		sounds.stop();
+		overlays.remove(overlay);
+		reset();
+		restorePaint();
+	}
+	private void reset()
+	{
+		previews.clear();
+		ledger.clear();
+		names.clear();
+		knownLoggedNames.clear();
+		pending.clear();
+		kills.reset();
+		overlay.clear();
+		sounds.reset();
+		gate.reset();
+		recentLoot.clear();
+		sequence = 0;
+		lastAudioGroup = -1;
+	}
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged e)
+	{
+		if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING ||
+			e.getGameState() == GameState.CONNECTION_LOST || e.getGameState() == GameState.LOGGING_IN)
+		{
+			reset();
+			hiddenPaint.clear();
+		}
+	}
+	@Subscribe
+	public void onGameTick(GameTick e)
+	{
+		gate.refresh();
+		recentLoot.values().removeIf(c -> now() - c.created > 5000);
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded e)
+	{
+		if (e.getGroupId() == InterfaceID.DOM_END_LEVEL_UI)
+		{
+			gate.noteDoomInterface();
+		}
+	}
+
+	@Subscribe
+	public void onScriptPreFired(ScriptPreFired e)
+	{
+		if (e.getScriptId() != COLLECTION_DELAYED_TRANSMIT || client.getGameState() != GameState.LOGGED_IN ||
+			client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
+		{
+			return;
+		}
+		Object[] args = e.getScriptEvent() == null ? null : e.getScriptEvent().getArguments();
+		if (args == null || args.length < 3 || !(args[1] instanceof Integer) || !(args[2] instanceof Integer))
+		{
+			return;
+		}
+		int id = (Integer)args[1];
+		int quantity = (Integer)args[2];
+		if (id < 0 || quantity < 0)
+		{
+			return;
+		}
+		ledger.observe(id, quantity, ++sequence);
+		ItemComposition definition = items.getItemComposition(id);
+		String name = definition == null ? null : definition.getName();
+		if (name != null)
+		{
+			String key = name.toLowerCase(Locale.ROOT);
+			names.put(key, id);
+			if (quantity > 0)
+			{
+				knownLoggedNames.add(key);
+			}
+			else
+			{
+				knownLoggedNames.remove(key);
+			}
+		}
+		for (Celebration c : pending.items())
+		{
+			if (c.itemId == id || c.name.equalsIgnoreCase(name))
+			{
+				c.itemId = id;
+				c.confirmedTotal = quantity;
+			}
+		}
+	}
+	@Subscribe
+	public void onChatMessage(ChatMessage e)
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		kills.onChatMessage(e);
+		if (e.getType() != ChatMessageType.GAMEMESSAGE && e.getType() != ChatMessageType.SPAM)
+		{
+			return;
+		}
+		String message = Text.removeTags(e.getMessage());
+		if (!message.startsWith(UNLOCK))
+		{
+			return;
+		}
+		String name = message.substring(UNLOCK.length());
+		knownLoggedNames.add(name.toLowerCase(Locale.ROOT));
+		sounds.cancelValue(name);
+		long now = now();
+		for (Celebration c : pending.items())
+		{
+			if (c.name.equalsIgnoreCase(name) && now - c.created < 2000)
+			{
+				c.newSlot = true;
+				return;
+			}
+		}
+		Celebration recent = recentLoot.get(name.toLowerCase(Locale.ROOT));
+		if (recent != null && now - recent.created < 2000)
+		{
+			if (!recent.newSlot)
+			{
+				recent.newSlot = true;
+				if (!recent.presented)
+				{
+					pending.add(recent);
+				}
+				else
+				{
+					recent.upgradeOnly = true;
+					if (overlay.showing(recent))
+					{
+						queueUnlockJingle(recent);
+					}
+					else
+					{
+						pending.add(recent);
+					}
+				}
+			}
+			return;
+		}
+		int id = names.getOrDefault(name.toLowerCase(Locale.ROOT), -1);
+		pending.add(new Celebration(name, id, 1, null, true, ++sequence, now, gate.delayMillis()));
+	}
+	@Subscribe
+	public void onLootReceived(LootReceived e)
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		// LootTracker emits this once for its NPC/chest/activity records. Do not additionally
+		// subscribe to NpcLootReceived and double-handle the same reward.
+		gate.noteReward(e.getName());
+		custom.onLootReceived(e, rawId -> {
+			int id = items.canonicalize(rawId);
+			ItemComposition item = items.getItemComposition(id);
+			String name = item == null ? "" : item.getName();
+			return ledger.get(id) != null || (name != null && knownLoggedNames.contains(name.toLowerCase(Locale.ROOT))) ||
+				wiki.entry(id, name) != null;
+		});
+		long now = now();
+		long rewardSequence = ++sequence;
+		Map<Integer, Integer> stacks = new LinkedHashMap<>();
+		for (ItemStack stack : e.getItems())
+		{
+			int id = items.canonicalize(stack.getId());
+			if (stack.getQuantity() > 0)
+			{
+				stacks.merge(id, stack.getQuantity(), (a, b) -> (int)Math.min(Integer.MAX_VALUE, (long)a + b));
+			}
+		}
+		for (Map.Entry<Integer, Integer> stack : stacks.entrySet())
+		{
+			int id = stack.getKey();
+			ItemComposition composition = items.getItemComposition(id);
+			if (composition == null)
+			{
+				continue;
+			}
+			String name = composition.getName();
+			if (name == null)
+			{
+				continue;
+			}
+			id = names.getOrDefault(name.toLowerCase(Locale.ROOT), id);
+			names.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
+			Celebration target = null;
+			for (Celebration c : pending.items())
+			{
+				if (c.newSlot && c.source == null && c.name.equalsIgnoreCase(name) && now - c.created < 2000)
+				{
+					target = c;
+					break;
+				}
+			}
+			if (target == null)
+			{
+				target = new Celebration(name, id, stack.getValue(), e.getName(), false, rewardSequence, now, gate.delayMillis());
+				boolean knownOwned = ledger.obtained(id) || knownLoggedNames.contains(name.toLowerCase(Locale.ROOT));
+				boolean collectionType = wiki.entry(id, name) != null;
+				if (config.repeatDrops() && (knownOwned || collectionType))
+				{
+					// A received collection-item drop can be presented before personal quantities sync.
+					// Ownership and exact totals still require authoritative collection-log data.
+					pending.add(target);
+				}
+			}
+			if (target != null)
+			{
+				recentLoot.put(name.toLowerCase(Locale.ROOT), target);
+				target.audioGroup = rewardSequence;
+				target.itemId = id;
+				target.source = e.getName();
+				target.dropQuantity = stack.getValue();
+				CollectionLedger.Entry count = ledger.get(id);
+				target.lastSyncedTotal = count == null ? null : count.quantity;
+				attachKc(target);
+			}
+		}
+	}
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (MenuAction.of(event.getType()) != MenuAction.EXAMINE_ITEM_GROUND || !client.isKeyPressed(KeyCode.KC_SHIFT))
+		{
+			return;
+		}
+		ItemComposition item = items.getItemComposition(items.canonicalize(event.getIdentifier()));
+		if (item == null || item.getName() == null)
+		{
+			return;
+		}
+		String name = item.getName();
+		boolean listed = popupExclusions().stream().anyMatch(name::equalsIgnoreCase);
+		client.createMenuEntry(-1)
+			.setOption(listed ? "Remove popup exclusion" : "Exclude from popups")
+			.setTarget(event.getTarget())
+			.setType(MenuAction.RUNELITE)
+			.onClick(entry -> setPopupExcluded(name, !listed));
+	}
+
+	private List<String> popupExclusions()
+	{
+		String csv = config.excludedPopupItems();
+		return new ArrayList<>(Text.fromCSV(csv == null ? "" : csv));
+	}
+
+	void setPopupExcluded(String name, boolean excluded)
+	{
+		List<String> entries = popupExclusions();
+		entries.removeIf(name::equalsIgnoreCase);
+		if (excluded)
+		{
+			entries.add(name);
+		}
+		configManager.setConfiguration("collection-celebrations", "excludedPopupItems", Text.toCSV(entries));
+	}
+
+	private boolean popupExcluded(Celebration c)
+	{
+		return c.previewTier == null && GroundItemSoundFilter.match(config.excludedPopupItems(), c.name, c.dropQuantity) > 0;
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!"collection-celebrations".equals(event.getGroup()))
+		{
+			return;
+		}
+		if (!"previewSelection".equals(event.getKey()) && !"previewKind".equals(event.getKey()))
+		{
+			return;
+		}
+		PreviewSelection selection = config.previewSelection();
+		PreviewKind kind = config.previewKind();
+		clientThread.invokeLater(() -> {
+			if (!running)
+			{
+				return;
+			}
+			if (selection == null || selection == PreviewSelection.OFF)
+			{
+				previews.clear();
+				overlay.clearPreview();
+				sounds.cancelPreview();
+			}
+			else
+			{
+				appendPreview(selection.tier, kind);
+			}
+		});
+	}
+
+	void updatePreview()
+	{
+		PreviewSelection selection = config.previewSelection();
+		if (selection == null || selection == PreviewSelection.OFF)
+		{
+			previews.clear();
+			overlay.clearPreview();
+			sounds.cancelPreview();
+		}
+		else
+		{
+			appendPreview(selection.tier);
+		}
+	}
+	void queuePreview(PreviewTier tier)
+	{
+		appendPreview(tier);
+	}
+	private void appendPreview(PreviewTier tier)
+	{
+		appendPreview(tier, config.previewKind());
+	}
+	private void appendPreview(PreviewTier tier, PreviewKind kind)
+	{
+		if (tier == null || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		WikiRarity.Entry example = wiki.example(tier);
+		Celebration c = new Celebration(example == null ? tier.itemName : example.name, example == null ? tier.itemId : example.id, 1,
+										"Preview only", true, 0, now(), 0);
+		c.newSlot = kind != PreviewKind.REPEAT_DROP;
+		c.previewTier = tier;
+		c.tier = tier;
+		c.confirmedTotal = c.newSlot ? 1 : 2;
+		c.kc = "Example KC: 123";
+		previews.add(c);
+	}
+	void testAction(String action, PreviewTier tier)
+	{
+		switch (action)
+		{
+		case "Test selected":
+			queuePreview(tier);
+			break;
+		case "Add to queue":
+			appendPreview(tier);
+			break;
+		case "Test all tiers":
+			for (PreviewTier candidate : PreviewTier.values())
+			{
+				appendPreview(candidate);
+			}
+			break;
+		case "Next":
+			overlay.clearPreview();
+			sounds.cancelPreview();
+			break;
+		case "Stop":
+			previews.clear();
+			overlay.clearPreview();
+			sounds.cancelPreview();
+			break;
+		default:
+			break;
+		}
+	}
+	private int rarityPriority(Celebration c)
+	{
+		if (c.previewTier != null)
+		{
+			return c.previewTier.ordinal();
+		}
+		RarityResult result = wiki.resolve(c.itemId, c.name);
+		return result == null ? 0 : PreviewTier.valueOf(result.getTier().name()).ordinal();
+	}
+
+	private void preparePresentation(Celebration c)
+	{
+		c.dropRateText = wiki.dropRateText(c.source, c.name);
+		c.progressCount = Math.max(0, client.getVarpValue(VarPlayerID.COLLECTION_COUNT));
+		c.progressMax = Math.max(0, client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
+		WikiRarity.Entry entry = wiki.entry(c.itemId, c.name);
+		if (entry != null)
+		{
+			c.itemId = entry.id;
+			c.wikiCompletion = entry.completion;
+		}
+		if (c.itemId >= 0)
+		{
+			ItemComposition item = items.getItemComposition(c.itemId);
+			if (item != null)
+			{
+				c.untradeable = !item.isTradeable();
+				long ge = Math.max(0, items.getItemPrice(c.itemId));
+				long ha = Math.max(0, item.getHaPrice());
+				long unit = config.valueMode() == ValueMode.HIGH_ALCH ? ha
+							: config.valueMode() == ValueMode.HIGHEST ? Math.max(ge, ha)
+																	  : ge;
+				c.value = unit * Math.max(1, c.dropQuantity);
+				RarityResult resolved = wiki.resolve(c.itemId, c.name);
+				if (resolved != null)
+				{
+					c.wikiCompletion = resolved.getCompPercent();
+					if (c.previewTier == null)
+					{
+						c.tier = PreviewTier.valueOf(resolved.getTier().name());
+					}
+				}
+			}
+		}
+	}
+
+	private void attachKc(Celebration c)
+	{
+		if (c.kc != null || c.source == null || now() - c.created > 5000)
+		{
+			return;
+		}
+		List<String> sourceNames = new ArrayList<>();
+		sourceNames.add(c.source);
+		if (c.source.toLowerCase(Locale.ROOT).startsWith("clue scroll"))
+		{
+			for (String tier : List.of("beginner", "easy", "medium", "hard", "elite", "master"))
+			{
+				if (c.source.toLowerCase(Locale.ROOT).contains(tier))
+				{
+					sourceNames.add(tier + " Treasure Trails");
+				}
+			}
+		}
+		KillCountTracker.RecentKill kill = kills.killCountFor(sourceNames);
+		if (kill != null)
+		{
+			c.kc = kill.getKind().labelFor(kill.getSource()) + kill.getKillCount();
+		}
+	}
+	@Subscribe
+	public void onBeforeRender(BeforeRender e)
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		long now = now();
+		boolean hold = gate.blocked();
+		overlay.advance(now, hold);
+		boolean presentationStarted = false;
+		for (Celebration c : pending.items())
+		{
+			attachKc(c);
+		}
+		if (overlay.idle() && !hold && !sounds.busy())
+		{
+			Map<Celebration, Integer> priorities = new IdentityHashMap<>();
+			Celebration c =
+				pending.poll(n -> now >= n.due, Comparator.comparingInt(n -> priorities.computeIfAbsent(n, this::rarityPriority)));
+			if (c == null && pending.size() == 0)
+			{
+				c = previews.poll(n -> true, Comparator.comparingInt(this::rarityPriority));
+			}
+			if (c != null)
+			{
+				if (c.previewTier == null)
+				{
+					if (c.itemId < 0)
+					{
+						c.itemId = names.getOrDefault(c.name.toLowerCase(Locale.ROOT), -1);
+					}
+					Integer confirmed = ledger.confirmedAfter(c.itemId, c.sequence);
+					if (confirmed != null)
+					{
+						c.confirmedTotal = confirmed;
+					}
+					CollectionLedger.Entry snapshot = ledger.get(c.itemId);
+					if (snapshot != null)
+					{
+						c.lastSyncedTotal = snapshot.quantity;
+					}
+					c.provisionalTotal = knownLoggedNames.contains(c.name.toLowerCase(Locale.ROOT)) ? 1 : 0;
+				}
+				preparePresentation(c);
+				if (!popupExcluded(c) && (c.previewTier != null || c.newSlot || (config.repeatDrops() && TierStyle.repeats(c.tier, config))))
+				{
+					presentationStarted = true;
+					c.presented = true;
+					overlay.show(c, now);
+					if (config.collectionAudio() &&
+						(c.upgradeOnly || c.previewTier != null || !config.bulkUnlockSfx() || c.audioGroup != lastAudioGroup))
+					{
+						String sound = TierStyle.file(c.tier, config);
+						int volume = TierStyle.volume(c.tier, config);
+						int unlockVolume = c.newSlot ? unlockVolume(c.tier) : 0;
+						if (c.previewTier != null)
+						{
+							if (unlockVolume > 0 && SoundQueue.validName(config.unlockFile()))
+							{
+								sounds.playPreview(sound, volume, config.unlockFile(), unlockVolume);
+							}
+							else
+							{
+								sounds.playPreview(sound, volume);
+							}
+						}
+						else
+						{
+							if (!c.upgradeOnly && SoundQueue.validName(sound))
+							{
+								sounds.playNow(sound.trim(), volume);
+							}
+							if (unlockVolume > 0 && SoundQueue.validName(config.unlockFile()))
+							{
+								sounds.playNow(config.unlockFile().trim(), unlockVolume);
+							}
+							lastAudioGroup = c.audioGroup;
+						}
+					}
+				}
+			}
+		}
+		// Ready collection notifications own the first available audio slot. A stream
+		// of standalone value sounds must not keep their popup waiting indefinitely.
+		if (!presentationStarted)
+		{
+			sounds.tick(now);
+		}
+
+		if (client.getWidget(InterfaceID.NotificationDisplay.FRAME) == null)
+		{
+			hiddenPaint.clear();
+		}
+		// Only replace collection-log paint; never change game popup settings or the root used by case plugins.
+		if (config.showPopups() && "Collection log".equalsIgnoreCase(client.getVarcStrValue(VarClientID.NOTIFICATION_TITLE)))
+		{
+			for (int component : PAINT)
+			{
+				Widget w = client.getWidget(component);
+				if (w != null)
+				{
+					hide(w);
+					if (w.getDynamicChildren() != null)
+					{
+						for (Widget child : w.getDynamicChildren())
+						{
+							if (child != null)
+							{
+								hide(child);
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			restorePaint();
+		}
+	}
+	int unlockVolume(PreviewTier tier)
+	{
+		int requested = Math.max(0, Math.min(100, config.unlockVolume())) * Math.max(0, Math.min(100, config.masterVolume())) / 100;
+		// Keep the extra accent below the selected drop sound, including quiet tiers.
+		return Math.min(requested, TierStyle.volume(tier, config) * 35 / 100);
+	}
+
+	private void queueUnlockJingle(Celebration c)
+	{
+		if (popupExcluded(c) || !config.collectionAudio() || TierStyle.volume(c.tier, config) <= 0)
+		{
+			return;
+		}
+		int volume = unlockVolume(c.tier);
+		if (SoundQueue.validName(config.unlockFile()))
+		{
+			sounds.offer(config.unlockFile().trim(), volume, 0, true);
+		}
+	}
+
+	private void hide(Widget w)
+	{
+		if (!w.isSelfHidden())
+		{
+			hiddenPaint.add(w);
+			w.setHidden(true);
+		}
+	}
+	private void restorePaint()
+	{
+		for (Widget w : hiddenPaint)
+		{
+			w.setHidden(false);
+		}
+		hiddenPaint.clear();
+	}
+}

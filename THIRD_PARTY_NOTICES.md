@@ -1,0 +1,20 @@
+# Source provenance
+
+Custom Sounds: copyright (c) 2023 daanbom, BSD-2-Clause.
+https://github.com/daanbom/Custom-Drop-Sounds/tree/0907827d2440b270576713cbd84a749d9cb7e213
+Adapted drop configuration and sound/event selection into CustomSoundEvents and CelebrationConfig. Non-drop features and weapon mappings are not included. Replaced playback, scheduling and lifecycle management. Original audio resources excluded. Full terms: licenses/custom-sounds.txt.
+
+Collection Log Popup Enhanced: copyright (c) 2026 SnakeSteak, BSD-2-Clause.
+https://github.com/TimHeessels/collection-log-popup-enhanced/tree/b791be9b48ff0ad83b962fe9e0bfd2bcde368995
+Adapted KillCountTracker, KillCountKind, collection-unlock matching, native popup paint suppression, and the original RarityResolver, RarityResult, RarityTier, RarityBasis, DropRateResolver and CollectionLogSlotNames. Rarity weighting, percentile thresholds, gold thresholds and fallbacks are retained; preview reuses a single distribution per click. Added KC freshness checks. Collection progress uses the same official varps as Enhanced. Original bitmap overlay resources and sounds are excluded. Wiki completion data is fetched separately from the wiki and cached locally; source-specific drop rates can be loaded from user-local files. Neither dataset is distributed in this JAR. Full terms: licenses/enhanced.txt.
+
+New code and original Java2D panel: copyright (c) 2026 maiz, BSD-2-Clause, see LICENSE.
+
+RuneLite is used as a provided client/API dependency. Its standard transitive runtime dependencies are not repackaged in this plugin jar. No BotsSouls files or third-party media are included in the repository or JAR. Default sound filenames refer to private development files, outside this distribution; users must supply their own WAVs.
+
+The collection-log synchronization pattern was inspected in RuneProfile (703e13108b60e5a75ffeef3f428b8500091d3dc6, CollectionLogWidgetSubscriber) as API usage reference. This plugin implements a passive reader and does not copy its automatic menu-action logic or use its network service.
+
+Runtime wiki data: OSRS Wiki contributors, CC BY-NC-SA 3.0 (not BSD).
+Sources: https://oldschool.runescape.wiki/w/Module:Collection_log/data.json and https://oldschool.runescape.wiki/w/Module:Collection_log/completion.json .
+License: https://creativecommons.org/licenses/by-nc-sa/3.0/ ; policy: https://meta.weirdgloop.org/w/Licensing .
+Transformation: join public item records and completion percentages by item ID; omit scores not present in the completion source. Attribution and license links are preserved in the local cache. No wiki artwork is downloaded.
