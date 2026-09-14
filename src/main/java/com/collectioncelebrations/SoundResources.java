@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -13,6 +14,12 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 /** Local overrides take precedence; defaults are read directly from the plugin JAR. */
 final class SoundResources
 {
+	private static final Map<String, String> LEGACY_DEFAULTS = Map.of(
+		"botssouls-common.wav", "custom-sounds-common.wav",
+		"botssouls-uncommon.wav", "custom-sounds-uncommon.wav",
+		"botssouls-rare.wav", "custom-sounds-rare.wav",
+		"botssouls-veryrare.wav", "custom-sounds-veryrare.wav",
+		"botssouls-unlock.wav", "custom-sounds-unlock.wav");
 
 	private SoundResources()
 	{
@@ -24,7 +31,7 @@ final class SoundResources
 		{
 			return AudioSystem.getAudioInputStream(local);
 		}
-		String name = local.getName();
+		String name = LEGACY_DEFAULTS.getOrDefault(local.getName(), local.getName());
 		InputStream resource = SoundQueue.validName(name) ? SoundResources.class.getResourceAsStream("/sounds/" + name) : null;
 		if (resource == null)
 		{

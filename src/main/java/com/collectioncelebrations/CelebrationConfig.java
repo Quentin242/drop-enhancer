@@ -375,7 +375,7 @@ public interface CelebrationConfig extends Config
 				position = 10)
 	default String fileCommon()
 	{
-		return "botssouls-common.wav";
+		return "custom-sounds-common.wav";
 	}
 
 	@ConfigItem(keyName = "colourUncommon", name = "Uncommon colour", description = "Custom colour when Ground Items colours is disabled",
@@ -398,7 +398,7 @@ public interface CelebrationConfig extends Config
 				position = 16)
 	default String fileUncommon()
 	{
-		return "botssouls-uncommon.wav";
+		return "custom-sounds-uncommon.wav";
 	}
 
 	@ConfigItem(keyName = "colourRare", name = "Rare colour", description = "Custom colour when Ground Items colours is disabled",
@@ -421,7 +421,7 @@ public interface CelebrationConfig extends Config
 				position = 22)
 	default String fileRare()
 	{
-		return "botssouls-rare.wav";
+		return "custom-sounds-rare.wav";
 	}
 
 	@ConfigItem(keyName = "colourVeryRare", name = "VeryRare colour", description = "Custom colour when Ground Items colours is disabled",
@@ -444,7 +444,7 @@ public interface CelebrationConfig extends Config
 				position = 28)
 	default String fileVeryRare()
 	{
-		return "botssouls-veryrare.wav";
+		return "custom-sounds-veryrare.wav";
 	}
 
 	@ConfigItem(keyName = "colourPet", name = "Pet colour", description = "Custom colour when Ground Items colours is disabled",
@@ -683,7 +683,7 @@ public interface CelebrationConfig extends Config
 				position = 5)
 	default String unlockFile()
 	{
-		return "botssouls-unlock.wav";
+		return "custom-sounds-unlock.wav";
 	}
 	@Range(min = 0, max = 100)
 	@ConfigItem(keyName = "unlockVolume", name = "New log jingle volume",

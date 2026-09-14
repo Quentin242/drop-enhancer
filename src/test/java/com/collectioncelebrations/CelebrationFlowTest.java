@@ -241,7 +241,7 @@ public class CelebrationFlowTest
 			p.queuePreview(tier);
 			Celebration c = release();
 			assertSame(tier, c.previewTier);
-			verify(p.sounds).playPreview(tier == PreviewTier.COMMON ? "CollectionLog.wav" : tier.sound, 70, "botssouls-unlock.wav", 24);
+			verify(p.sounds).playPreview(tier == PreviewTier.COMMON ? "CollectionLog.wav" : tier.sound, 70, "custom-sounds-unlock.wav", 24);
 			assertEquals(tier.itemId, c.itemId);
 			p.onBeforeRender(new BeforeRender());
 			verify(p.overlay, times(1)).show(any(), anyLong());
@@ -271,7 +271,7 @@ public class CelebrationFlowTest
 		verify(p.sounds, never()).playNow(anyString(), anyInt());
 		when(p.gate.blocked()).thenReturn(false);
 		release();
-		verify(p.sounds).playPreview("rare.wav", 70, "botssouls-unlock.wav", 24);
+		verify(p.sounds).playPreview("rare.wav", 70, "custom-sounds-unlock.wav", 24);
 		clearInvocations(p.overlay);
 		loot();
 		p.time += 2000;
@@ -363,7 +363,7 @@ public class CelebrationFlowTest
 		verify(p.overlay, times(1)).show(any(), anyLong());
 		assertTrue("Upgrade visible notification without replaying tier audio", shown.newSlot);
 		verify(p.sounds, times(1)).playNow("CollectionLog.wav", 70);
-		verify(p.sounds).offer("botssouls-unlock.wav", 24, 0, true);
+		verify(p.sounds).offer("custom-sounds-unlock.wav", 24, 0, true);
 	}
 
 	@Test
@@ -416,7 +416,7 @@ public class CelebrationFlowTest
 		chat("New item added to your collection log: " + NAME);
 		release();
 		verify(p.sounds).cancelValue(NAME);
-		verify(p.sounds).playNow("botssouls-unlock.wav", 24);
+		verify(p.sounds).playNow("custom-sounds-unlock.wav", 24);
 	}
 	@Test
 	public void repeatDoesNotAddUnlockJingle()
@@ -424,7 +424,7 @@ public class CelebrationFlowTest
 		sync(1);
 		loot();
 		release();
-		verify(p.sounds, never()).playNow(eq("botssouls-unlock.wav"), anyInt());
+		verify(p.sounds, never()).playNow(eq("custom-sounds-unlock.wav"), anyInt());
 	}
 	@Test
 	public void knownCollectionDropShowsBeforeLogSyncWithoutClaimingOwnership()
@@ -459,7 +459,7 @@ public class CelebrationFlowTest
 		p.onBeforeRender(new BeforeRender());
 		verify(p.overlay).show(any(), anyLong());
 		verify(p.sounds, times(1)).playNow("CollectionLog.wav", 70);
-		verify(p.sounds).offer("botssouls-unlock.wav", 24, 0, true);
+		verify(p.sounds).offer("custom-sounds-unlock.wav", 24, 0, true);
 		assertTrue(shown.getValue().newSlot);
 	}
 	@Test

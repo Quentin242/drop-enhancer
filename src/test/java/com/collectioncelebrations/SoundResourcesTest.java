@@ -63,4 +63,33 @@ public class SoundResourcesTest
 	{
 		SoundResources.open(new File(temporary.getRoot(), "missing-custom.wav"));
 	}
+	@Test
+	public void savedLegacyDefaultsDecodeTheNewRecordings() throws Exception
+	{
+		for (String tier : new String[] {"common", "uncommon", "rare", "veryrare", "unlock"})
+		{
+			try (AudioInputStream legacy = SoundResources.open(new File(temporary.getRoot(), "botssouls-" + tier + ".wav"));
+				AudioInputStream current = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav")))
+			{
+				assertEquals(current.getFormat().toString(), legacy.getFormat().toString());
+				org.junit.Assert.assertArrayEquals(current.readAllBytes(), legacy.readAllBytes());
+			}
+		}
+	}
+
+	@Test
+	public void newDefaultNamesStillAllowLocalOverrides() throws Exception
+	{
+		File override = new File(temporary.getRoot(), "custom-sounds-common.wav");
+		try (java.io.InputStream source = getClass().getResourceAsStream("/sounds/botssouls-pet.wav"))
+		{
+			Files.copy(source, override.toPath());
+		}
+		try (AudioInputStream local = SoundResources.open(override);
+			AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "botssouls-pet.wav")))
+		{
+			org.junit.Assert.assertArrayEquals(pet.readAllBytes(), local.readAllBytes());
+		}
+	}
+
 }

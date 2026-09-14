@@ -72,7 +72,7 @@ public class CustomSoundEventsTest
 		when(events.itemManager.getItemComposition(1)).thenReturn(item);
 		when(events.itemManager.getItemPrice(1)).thenReturn(1000);
 		events.onLootReceived(new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 2)), 1, null), id -> false);
-		verify(events.soundQueue).offerValue("botssouls-common.wav", 50, "value test");
+		verify(events.soundQueue).offerValue("custom-sounds-common.wav", 50, "value test");
 		verify(events.groundItemsConfig, never()).valueCalculationMode();
 	}
 	@Test
@@ -85,7 +85,7 @@ public class CustomSoundEventsTest
 		when(events.itemManager.getItemComposition(1)).thenReturn(item);
 		LootReceived loot = new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 1)), 1, null);
 		events.onLootReceived(loot, id -> false);
-		verify(events.soundQueue).offer("botssouls-rare.wav", 50, 0, true);
+		verify(events.soundQueue).offer("custom-sounds-rare.wav", 50, 0, true);
 		when(events.groundItemsConfig.getHighlightItems()).thenReturn("");
 		ConfigChanged changed = new ConfigChanged();
 		changed.setGroup("grounditems");
@@ -126,7 +126,7 @@ public class CustomSoundEventsTest
 		verifyNoInteractions(events.soundQueue);
 		when(events.config.dropValueMode()).thenReturn(DropValueMode.GE);
 		events.onLootReceived(loot, id -> false);
-		verify(events.soundQueue).offerValue("botssouls-common.wav", 50, "mithril sword");
+		verify(events.soundQueue).offerValue("custom-sounds-common.wav", 50, "mithril sword");
 	}
 
 	@Test
@@ -147,7 +147,7 @@ public class CustomSoundEventsTest
 		when(events.itemManager.getItemComposition(1)).thenReturn(item);
 		LootReceived loot = new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 2)), 1, null);
 		int[] unitPrices = {51, 101, 151, 201};
-		String[] files = {"botssouls-common.wav", "botssouls-uncommon.wav", "botssouls-rare.wav", "botssouls-veryrare.wav"};
+		String[] files = {"custom-sounds-common.wav", "custom-sounds-uncommon.wav", "custom-sounds-rare.wav", "custom-sounds-veryrare.wav"};
 		for (int n = 0; n < unitPrices.length; n++)
 		{
 			clearInvocations(events.soundQueue);
@@ -159,7 +159,7 @@ public class CustomSoundEventsTest
 		clearInvocations(events.soundQueue);
 		when(events.groundItemsConfig.insaneValuePrice()).thenReturn(500);
 		events.onLootReceived(loot, id -> false);
-		verify(events.soundQueue).offerValue("botssouls-rare.wav", 50, "value test");
+		verify(events.soundQueue).offerValue("custom-sounds-rare.wav", 50, "value test");
 	}
 
 	@Test
@@ -180,7 +180,7 @@ public class CustomSoundEventsTest
 		verifyNoInteractions(events.soundQueue);
 		when(events.config.defaultValueSound()).thenReturn(true);
 		events.onLootReceived(loot, id -> false);
-		verify(events.soundQueue).offerValue("botssouls-common.wav", 50, "value test");
+		verify(events.soundQueue).offerValue("custom-sounds-common.wav", 50, "value test");
 	}
 
 	@Test
