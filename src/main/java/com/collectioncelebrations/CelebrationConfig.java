@@ -623,7 +623,7 @@ public interface CelebrationConfig extends Config
 		section = rarity, position = 7)
 	default boolean repeatCommon()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(

@@ -44,6 +44,7 @@ public class CelebrationFlowTest
 		p.kills = new KillCountTracker();
 		when(p.client.getGameState()).thenReturn(GameState.LOGGED_IN);
 		when(p.config.repeatDrops()).thenReturn(true);
+		when(p.config.repeatCommon()).thenReturn(true);
 		when(p.config.collectionAudio()).thenReturn(true);
 		when(p.config.masterVolume()).thenReturn(70);
 		when(p.config.fileCommon()).thenReturn("CollectionLog.wav");
