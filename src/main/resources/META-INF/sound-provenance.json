@@ -14,9 +14,9 @@
     {
       "file": "drop-enhancer-uncommon.wav",
       "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
-      "sha256": "015bd83a8eb0a6eaab5e5a3a3fca354f0843291c2df4cb77d59f7baa3a1eba52",
+      "sha256": "a221ada37961d4ea3084f39e3234ca46316c17e4015b17f3248b945defe2c56c",
       "durationSeconds": 2.25,
-      "changes": "Stereo 44.1 kHz 16-bit PCM, original oscillator arrangement with envelope shaping and stereo delay.",
+      "changes": "Stereo 44.1 kHz 16-bit PCM; original oscillator arrangement with brighter harmonics, reduced low-frequency emphasis and lighter stereo delay. Melody and duration unchanged.",
       "license": "BSD-2-Clause; see LICENSE."
     },
     {
@@ -52,9 +52,9 @@
     {
       "file": "drop-enhancer-pet.wav",
       "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
-      "sha256": "6fad805aad1e5a82505656d3cb6c2b2596debaa4193e499c4f11e0c17dabad26",
+      "sha256": "b257ec25795ba528f3056ebde1000a1117f0bd77d1d88884116cf5bc5c25ec0a",
       "durationSeconds": 4.6,
-      "changes": "Stereo 44.1 kHz 16-bit PCM, original oscillator arrangement with envelope shaping and stereo delay.",
+      "changes": "Stereo 44.1 kHz 16-bit PCM; original oscillator arrangement with brighter harmonics, reduced low-frequency emphasis and lighter stereo delay. Melody and duration unchanged.",
       "license": "BSD-2-Clause; see LICENSE."
     }
   ]
