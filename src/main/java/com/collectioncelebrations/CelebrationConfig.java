@@ -467,7 +467,7 @@ public interface CelebrationConfig extends Config
 				position = 33)
 	default String filePet()
 	{
-		return "botssouls-pet.wav";
+		return "custom-sounds-pet.wav";
 	}
 
 	@ConfigItem(

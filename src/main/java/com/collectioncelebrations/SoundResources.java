@@ -16,6 +16,7 @@ final class SoundResources
 {
 	private static final Map<String, String> LEGACY_DEFAULTS = Map.of(
 		"botssouls-common.wav", "custom-sounds-common.wav",
+		"botssouls-pet.wav", "custom-sounds-pet.wav",
 		"botssouls-uncommon.wav", "custom-sounds-uncommon.wav",
 		"botssouls-rare.wav", "custom-sounds-rare.wav",
 		"botssouls-veryrare.wav", "custom-sounds-veryrare.wav",

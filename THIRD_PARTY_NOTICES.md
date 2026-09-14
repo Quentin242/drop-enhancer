@@ -2,7 +2,7 @@
 
 Custom Sounds: copyright (c) 2023 daanbom, BSD-2-Clause.
 https://github.com/daanbom/Custom-Drop-Sounds/tree/0907827d2440b270576713cbd84a749d9cb7e213
-Adapted drop configuration and sound/event selection into CustomSoundEvents and CelebrationConfig. Non-drop features and weapon mappings are not included. Replaced playback, scheduling and lifecycle management. Five default recordings are now supplied from Custom Sounds with author permission; see AUDIO-PERMISSION.md for their separate terms and exact sources. Full terms: licenses/custom-sounds.txt.
+Adapted drop configuration and sound/event selection into CustomSoundEvents and CelebrationConfig. Non-drop features and weapon mappings are not included. Replaced playback, scheduling and lifecycle management. Six default recordings are now supplied from Custom Sounds with author permission; see AUDIO-PERMISSION.md for their separate terms and exact sources. Full terms: licenses/custom-sounds.txt.
 
 Collection Log Popup Enhanced: copyright (c) 2026 SnakeSteak, BSD-2-Clause.
 https://github.com/TimHeessels/collection-log-popup-enhanced/tree/b791be9b48ff0ad83b962fe9e0bfd2bcde368995
@@ -10,7 +10,7 @@ Adapted KillCountTracker, KillCountKind, collection-unlock matching, native popu
 
 New code and original Java2D panel: copyright (c) 2026 maiz, BSD-2-Clause, see LICENSE.
 
-RuneLite is used as a provided client/API dependency. Its standard transitive runtime dependencies are not repackaged in this plugin jar. Five default WAVs are supplied by daanbom / Custom Sounds with author permission reported by maiz on 2026-09-14. The previously permitted UniversalAudioSFX pet recording is retained unchanged. Audio permission is separate from the BSD code license and grants no standalone reuse rights. See AUDIO-PERMISSION.md (also bundled as META-INF/AUDIO-PERMISSION.md) and META-INF/sound-provenance.json for source revisions, changes and SHA-256 hashes.
+RuneLite is used as a provided client/API dependency. Its standard transitive runtime dependencies are not repackaged in this plugin jar. Six default WAVs are supplied by daanbom / Custom Sounds with author permission reported by maiz on 2026-09-14. UniversalAudioSFX recordings are no longer bundled. Audio permission is separate from the BSD code license and grants no standalone reuse rights. See AUDIO-PERMISSION.md (also bundled as META-INF/AUDIO-PERMISSION.md) and META-INF/sound-provenance.json for source revisions, changes and SHA-256 hashes.
 
 The collection-log synchronization pattern was inspected in RuneProfile (703e13108b60e5a75ffeef3f428b8500091d3dc6, CollectionLogWidgetSubscriber) as API usage reference. This plugin implements a passive reader and does not copy its automatic menu-action logic or use its network service.
 

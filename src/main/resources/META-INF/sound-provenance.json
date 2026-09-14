@@ -14,11 +14,11 @@
     {
       "file": "custom-sounds-uncommon.wav",
       "author": "daanbom / Custom Sounds",
-      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/medium_sound.wav",
-      "sourceSha256": "0c1ca8dd8920316065aeb0bc44073fe9033824a7b20292c7dec924f7f4e77aa1",
-      "sha256": "6b6c724a763e5f5cd47488a16fae23e9c2d61da40f6aff77d6d8af97bf5732f2",
-      "durationSeconds": 3.128979591836735,
-      "changes": "Converted 24-bit PCM to 16-bit PCM for Java audio compatibility; sample rate, channels and duration retained.",
+      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/lowest_sound.wav",
+      "sourceSha256": "d56afbcbfa0435ec6fe801aa5ecfa39edf2e9bfeb03992ecadc3a378fb4aa969",
+      "sha256": "d56afbcbfa0435ec6fe801aa5ecfa39edf2e9bfeb03992ecadc3a378fb4aa969",
+      "durationSeconds": 2.0,
+      "changes": "Renamed only; audio unchanged.",
       "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
     },
     {
@@ -52,13 +52,14 @@
       "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
     },
     {
-      "file": "botssouls-pet.wav",
-      "source": "RewardsAndLootsSoundEffects/FindEpicItem02/SFX_FindEpicItemNoWhooshMusic01v1.wav",
-      "sha256": "b0858b9f606fb43cea7f6a3ae9c1f3473a560678bcd477f423b0951fb0f6d65f",
-      "durationSeconds": 5.875,
-      "changes": "Previous Very rare selection, unchanged",
-      "pack": "UniversalAudioSFX",
-      "permission": "Author permission reported by maiz on 2026-09-14; retained at maintainer request."
+      "file": "custom-sounds-pet.wav",
+      "author": "daanbom / Custom Sounds",
+      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/pet_sound.wav",
+      "sourceSha256": "9f88b758095f56279dbbe8f623fc8744f00b3cea2adec21d1a88755988479bb8",
+      "sha256": "9f88b758095f56279dbbe8f623fc8744f00b3cea2adec21d1a88755988479bb8",
+      "durationSeconds": 1.9596458333333333,
+      "changes": "Renamed only; audio unchanged.",
+      "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
     }
   ]
 }
