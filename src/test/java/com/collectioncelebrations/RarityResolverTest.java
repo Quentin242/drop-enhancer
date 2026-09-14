@@ -19,15 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Expected percentiles/tiers below are derived by replaying the resolver's exact algorithm in a
- * throwaway script against the real dataset fixture below (1705 scored entries as of writing) -
- * see conversation history for the derivation. These aren't hand-picked to "look right"; they're
- * the actual output of the composite-score + percentile-rank math for these real dataset ids.
- *
- * The fixture is gitignored (see src/test/resources/local-only/README.md) - these tests are
- * skipped rather than failed if it isn't present locally.
- */
+/** Regression checks against the optional local completion dataset. */
 public class RarityResolverTest
 {
 	private static final String FIXTURE = "/local-only/collection-log.json";
@@ -80,6 +72,7 @@ public class RarityResolverTest
 		// high alch fallback was added. Individual tests override this per-id where needed.
 		ItemComposition defaultComposition = mock(ItemComposition.class);
 		when(itemManager.getItemComposition(anyInt())).thenReturn(defaultComposition);
+		when(defaultComposition.isTradeable()).thenReturn(true);
 		// Default: no drop-rate data for any item, so unstubbed items behave as before the drop-rate
 		// fallback was added. Individual tests override this per-name where needed.
 		dropRateResolver = mock(DropRateResolver.class);
@@ -466,4 +459,16 @@ public class RarityResolverTest
 		assertEquals(RarityTier.RARE, expensive);
 		assertEquals(expensive, afterThresholdChange);
 	}
+	@Test
+	public void sanguineDustUsesCompletionRarityInEveryMode()
+	{
+		ItemComposition dust = mock(ItemComposition.class);
+		when(itemManager.getItemComposition(25746)).thenReturn(dust);
+		for (RarityBasis basis : RarityBasis.values())
+		{
+			config.basis = basis;
+			assertEquals(RarityTier.RARE, resolver.resolve(25746, "Sanguine dust").getTier());
+		}
+	}
+
 }

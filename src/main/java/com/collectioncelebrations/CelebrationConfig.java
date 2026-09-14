@@ -481,7 +481,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "rarityBasis", name = "Rarity based on",
-				description = "Original Enhanced calculation: wiki completion rarity and gold value, combined 60/40", section = rarity,
+				description = "Wiki completion rarity and gold value, combined 60/40. Untradeable items always use rarity only.", section = rarity,
 				position = 1)
 	default RarityBasis rarityBasis()
 	{

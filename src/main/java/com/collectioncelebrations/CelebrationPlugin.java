@@ -578,7 +578,7 @@ public class CelebrationPlugin extends Plugin
 		WikiRarity.Entry entry = wiki.entry(c.itemId, c.name);
 		int id = entry != null ? entry.id : c.itemId >= 0 ? c.itemId : names.getOrDefault(c.name.toLowerCase(Locale.ROOT), -1);
 		ItemComposition item = id < 0 ? null : items.getItemComposition(id);
-		return item == null ? 0 : itemValue(id, item, c.dropQuantity);
+		return item == null || !item.isTradeable() ? 0 : itemValue(id, item, c.dropQuantity);
 	}
 
 	private long itemValue(int id, ItemComposition item, int quantity)

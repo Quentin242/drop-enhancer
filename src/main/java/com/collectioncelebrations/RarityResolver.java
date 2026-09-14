@@ -19,7 +19,7 @@ import net.runelite.client.game.ItemManager;
  * Resolves a collection log item's rarity tier from completion percentage and value, combined per
  * the configured {@link RarityBasis}.
  * Value uses absolute GP cutoffs; completion and combination use population percentiles.
- * See README.md for missing-data and pet behavior.
+ * Untradeable items use completion rarity without a value contribution.
  */
 @Singleton
 public class RarityResolver
@@ -110,7 +110,7 @@ public class RarityResolver
 
 		RarityTier targetTier = RarityTier.valueOf(tier.name());
 		// Preserve upstream ranking, but compute the distribution once per button click.
-		Dataset previewDataset = config.rarityBasis() == RarityBasis.VALUE ? null : buildDataset(data);
+		Dataset previewDataset = buildDataset(data);
 		for (int itemId : shuffled)
 		{
 			CompletionEntry entry = data.byId.get(itemId);
@@ -149,9 +149,10 @@ public class RarityResolver
 		}
 
 		Double compPercent = compPercent(data, itemId);
-		RarityBasis basis = config.rarityBasis();
+		boolean untradeable = itemId >= 0 && !itemManager.getItemComposition(itemId).isTradeable();
+		RarityBasis basis = untradeable ? RarityBasis.RARITY : config.rarityBasis();
 		Double completionScore = compPercent != null ? 1 - (compPercent / 100.0) : null;
-		double valueScore = valueScore(itemId);
+		double valueScore = untradeable ? 0 : valueScore(itemId);
 
 		if (basis == RarityBasis.VALUE)
 		{
@@ -167,15 +168,22 @@ public class RarityResolver
 
 		if (basis == RarityBasis.RARITY)
 		{
-			if (completionScore == null)
+			if (completionScore != null)
 			{
-				// No completion data for this item to rank rarity-only against - nothing to back a
-				// tier with.
-				return new RarityResult(RarityTier.COMMON, itemId, price, highAlch, null, null, valueScore, 0,
-										dataset.compositeScores.length, 0, 0, alchPrice);
+				score = completionScore;
+				distribution = dataset.completionScores;
 			}
-			score = completionScore;
-			distribution = dataset.completionScores;
+			else
+			{
+				Double dropScore = untradeable ? dropRarityScore(itemName) : null;
+				if (dropScore == null || dataset.dropRateScores.length == 0)
+				{
+					return new RarityResult(RarityTier.COMMON, itemId, price, highAlch, null, null, valueScore, 0,
+						dataset.compositeScores.length, 0, 0, alchPrice);
+				}
+				score = dropScore;
+				distribution = dataset.dropRateScores;
+			}
 		}
 		else if (completionScore != null)
 		{
