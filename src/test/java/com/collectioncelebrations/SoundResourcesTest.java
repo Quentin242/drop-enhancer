@@ -39,12 +39,12 @@ public class SoundResourcesTest
 	public void localOverrideWinsOverBundledDefault() throws Exception
 	{
 		File override = new File(temporary.getRoot(), "botssouls-common.wav");
-		try (java.io.InputStream source = getClass().getResourceAsStream("/sounds/custom-sounds-pet.wav"))
+		try (java.io.InputStream source = getClass().getResourceAsStream("/sounds/drop-enhancer-pet.wav"))
 		{
 			Files.copy(source, override.toPath());
 		}
 		try (AudioInputStream local = SoundResources.open(override);
-			 AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-pet.wav")))
+			 AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
 		{
 			assertEquals(pet.getFrameLength(), local.getFrameLength());
 		}
@@ -81,14 +81,27 @@ public class SoundResourcesTest
 	public void newDefaultNamesStillAllowLocalOverrides() throws Exception
 	{
 		File override = new File(temporary.getRoot(), "custom-sounds-common.wav");
-		try (java.io.InputStream source = getClass().getResourceAsStream("/sounds/custom-sounds-pet.wav"))
+		try (java.io.InputStream source = getClass().getResourceAsStream("/sounds/drop-enhancer-pet.wav"))
 		{
 			Files.copy(source, override.toPath());
 		}
 		try (AudioInputStream local = SoundResources.open(override);
-			AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-pet.wav")))
+			AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
 		{
 			org.junit.Assert.assertArrayEquals(pet.readAllBytes(), local.readAllBytes());
+		}
+	}
+
+	@Test
+	public void replacedCustomSoundsDefaultsResolveToOriginalSynthesis() throws Exception
+	{
+		for (String tier : new String[] {"uncommon", "pet"})
+		{
+			try (AudioInputStream legacy = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav"));
+				AudioInputStream current = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-" + tier + ".wav")))
+			{
+				org.junit.Assert.assertArrayEquals(current.readAllBytes(), legacy.readAllBytes());
+			}
 		}
 	}
 

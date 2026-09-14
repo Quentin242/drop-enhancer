@@ -147,7 +147,7 @@ public class CustomSoundEventsTest
 		when(events.itemManager.getItemComposition(1)).thenReturn(item);
 		LootReceived loot = new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 2)), 1, null);
 		int[] unitPrices = {51, 101, 151, 201};
-		String[] files = {"custom-sounds-common.wav", "custom-sounds-uncommon.wav", "custom-sounds-rare.wav", "custom-sounds-veryrare.wav"};
+		String[] files = {"custom-sounds-common.wav", "drop-enhancer-uncommon.wav", "custom-sounds-rare.wav", "custom-sounds-veryrare.wav"};
 		for (int n = 0; n < unitPrices.length; n++)
 		{
 			clearInvocations(events.soundQueue);

@@ -1,9 +1,11 @@
 # Audio credits and permission
 
-**daanbom / [Custom Sounds](https://github.com/daanbom/Custom-Drop-Sounds)** supplies the Common, Uncommon, Rare, Very rare, Pet and new collection-log sounds. On 2026-09-14, maintainer maiz confirmed permission from the Custom Sounds author to use these sounds in Drop Enhancer and publish this repository.
+**daanbom / [Custom Sounds](https://github.com/daanbom/Custom-Drop-Sounds)** supplies the Common, Rare, Very rare and new collection-log sounds. On 2026-09-14, maintainer maiz confirmed permission from the Custom Sounds author to use these sounds in Drop Enhancer and publish this repository.
 
-Uncommon uses `lowest_sound.wav`; Pet uses `pet_sound.wav`. All six bundled recordings come from Custom Sounds. UniversalAudioSFX recordings are no longer bundled.
+**Uncommon and Pet** use original sounds made for Drop Enhancer: a short synthesized fanfare and a spacious choir-like chime. They use mathematical oscillators, envelopes and stereo delay, with no third-party recordings or samples and no copied melody. These two WAVs are distributed under the repository's BSD-2-Clause license.
 
-Audio ownership and permission are separate from the BSD-2-Clause source-code license. These notices record permission for this plugin; they grant no standalone audio reuse rights. If permission changes, replace or remove the affected recordings from future distributions.
+UniversalAudioSFX recordings are not bundled.
 
-Exact source revision, paths and SHA-256 hashes are included in `META-INF/sound-provenance.json`. All recordings are copied without audio edits. Old default names resolve to the new bundled recordings; user-imported local WAVs retain precedence.
+The four Custom Sounds recordings retain separate ownership and permission terms. Permission for their use in this plugin does not grant standalone audio reuse rights. If that permission changes, replace or remove the affected recordings from future distributions.
+
+Exact source revision, paths and SHA-256 hashes are included in `META-INF/sound-provenance.json`. The four Custom Sounds recordings are copied without audio edits. Old default names resolve to the new bundled recordings; user-imported local WAVs retain precedence.

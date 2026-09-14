@@ -398,7 +398,7 @@ public interface CelebrationConfig extends Config
 				position = 16)
 	default String fileUncommon()
 	{
-		return "custom-sounds-uncommon.wav";
+		return "drop-enhancer-uncommon.wav";
 	}
 
 	@ConfigItem(keyName = "colourRare", name = "Rare colour", description = "Custom colour when Ground Items colours is disabled",
@@ -467,7 +467,7 @@ public interface CelebrationConfig extends Config
 				position = 33)
 	default String filePet()
 	{
-		return "custom-sounds-pet.wav";
+		return "drop-enhancer-pet.wav";
 	}
 
 	@ConfigItem(

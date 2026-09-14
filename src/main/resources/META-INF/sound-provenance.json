@@ -12,14 +12,12 @@
       "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
     },
     {
-      "file": "custom-sounds-uncommon.wav",
-      "author": "daanbom / Custom Sounds",
-      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/lowest_sound.wav",
-      "sourceSha256": "d56afbcbfa0435ec6fe801aa5ecfa39edf2e9bfeb03992ecadc3a378fb4aa969",
-      "sha256": "d56afbcbfa0435ec6fe801aa5ecfa39edf2e9bfeb03992ecadc3a378fb4aa969",
-      "durationSeconds": 2.0,
-      "changes": "Renamed only; audio unchanged.",
-      "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
+      "file": "drop-enhancer-uncommon.wav",
+      "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
+      "sha256": "015bd83a8eb0a6eaab5e5a3a3fca354f0843291c2df4cb77d59f7baa3a1eba52",
+      "durationSeconds": 2.25,
+      "changes": "Stereo 44.1 kHz 16-bit PCM, original oscillator arrangement with envelope shaping and stereo delay.",
+      "license": "BSD-2-Clause; see LICENSE."
     },
     {
       "file": "custom-sounds-rare.wav",
@@ -52,14 +50,12 @@
       "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
     },
     {
-      "file": "custom-sounds-pet.wav",
-      "author": "daanbom / Custom Sounds",
-      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/pet_sound.wav",
-      "sourceSha256": "9f88b758095f56279dbbe8f623fc8744f00b3cea2adec21d1a88755988479bb8",
-      "sha256": "9f88b758095f56279dbbe8f623fc8744f00b3cea2adec21d1a88755988479bb8",
-      "durationSeconds": 1.9596458333333333,
-      "changes": "Renamed only; audio unchanged.",
-      "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
+      "file": "drop-enhancer-pet.wav",
+      "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
+      "sha256": "6fad805aad1e5a82505656d3cb6c2b2596debaa4193e499c4f11e0c17dabad26",
+      "durationSeconds": 4.6,
+      "changes": "Stereo 44.1 kHz 16-bit PCM, original oscillator arrangement with envelope shaping and stereo delay.",
+      "license": "BSD-2-Clause; see LICENSE."
     }
   ]
 }
