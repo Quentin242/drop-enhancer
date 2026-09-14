@@ -668,6 +668,14 @@ public interface CelebrationConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(keyName = "includedPopupItems", name = "Included popup items",
+		description = "Comma-separated names, * wildcards and stack quantity rules. Includes extra items and overrides global/per-tier repeat switches. Exclusions take priority; popup and audio master settings still apply.",
+		section = rarity, position = 32)
+	default String includedPopupItems()
+	{
+		return "";
+	}
+
 	@ConfigItem(keyName = "excludedPopupItems", name = "Excluded popup items",
 		description = "Comma-separated names; supports * wildcards and quantities, e.g. Mystic *, Rune arrow < 100. Suppresses new/repeat popups and their collection audio. Tests still show. Shift-right-click ground items to add/remove exact names.",
 		section = rarity, position = 31)

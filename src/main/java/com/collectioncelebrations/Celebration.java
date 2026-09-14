@@ -8,6 +8,7 @@ final class Celebration
 	int dropQuantity;
 	String source;
 	boolean newSlot;
+	boolean extraItem;
 	boolean presented;
 	boolean upgradeOnly;
 	final long sequence;

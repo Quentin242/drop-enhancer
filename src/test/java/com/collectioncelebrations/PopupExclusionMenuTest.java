@@ -18,6 +18,10 @@ public class PopupExclusionMenuTest
 	private CelebrationPlugin plugin;
 	private MenuEntry original;
 	private MenuEntry added;
+	private MenuEntry included;
+	private MenuEntry parent;
+	private Menu menu;
+	private Menu submenu;
 	@Before
 	public void setup()
 	{
@@ -32,7 +36,14 @@ public class PopupExclusionMenuTest
 		when(original.getIdentifier()).thenReturn(123);
 		when(original.getTarget()).thenReturn("<col=ffffff>Mystic hat");
 		when(plugin.client.isKeyPressed(KeyCode.KC_SHIFT)).thenReturn(true);
-		when(plugin.client.createMenuEntry(-1)).thenReturn(added);
+		menu = mock(Menu.class);
+		submenu = mock(Menu.class);
+		parent = mock(MenuEntry.class, RETURNS_SELF);
+		included = mock(MenuEntry.class, RETURNS_SELF);
+		when(plugin.client.getMenu()).thenReturn(menu);
+		when(menu.createMenuEntry(-1)).thenReturn(parent);
+		when(parent.createSubMenu()).thenReturn(submenu);
+		when(submenu.createMenuEntry(-1)).thenReturn(included, added);
 		when(plugin.items.canonicalize(123)).thenReturn(123);
 		ItemComposition definition = mock(ItemComposition.class);
 		when(definition.getName()).thenReturn("Mystic hat");
@@ -42,6 +53,10 @@ public class PopupExclusionMenuTest
 	public void onlyExplicitShiftGroundMenuClickWritesSettings()
 	{
 		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
+		verify(menu, times(1)).createMenuEntry(-1);
+		verify(parent).setOption("Drop Enhancer");
+		verify(parent).setType(MenuAction.RUNELITE);
+		verify(included).setOption("Include in popups");
 		verify(added).setOption("Exclude from popups");
 		verify(added).setType(MenuAction.RUNELITE);
 		verifyNoInteractions(plugin.configManager);
@@ -58,7 +73,7 @@ public class PopupExclusionMenuTest
 		when(plugin.client.isKeyPressed(KeyCode.KC_SHIFT)).thenReturn(true);
 		when(original.getType()).thenReturn(MenuAction.EXAMINE_ITEM);
 		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
-		verify(plugin.client, never()).createMenuEntry(anyInt());
+		verifyNoInteractions(menu);
 		verifyNoInteractions(plugin.configManager);
 	}
 	@Test
@@ -72,4 +87,28 @@ public class PopupExclusionMenuTest
 		verify(plugin.configManager).setConfiguration(eq("collection-celebrations"), eq("excludedPopupItems"), csv.capture());
 		assertEquals(java.util.List.of("Bones", "Rune *"), Text.fromCSV(csv.getValue().toString()));
 	}
+	@Test
+	public void inclusionClickRemovesExactExclusionButPreservesWildcard()
+	{
+		when(plugin.config.excludedPopupItems()).thenReturn("Mystic hat, Mystic *");
+		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
+		verifyNoInteractions(plugin.configManager);
+		ArgumentCaptor<Consumer<MenuEntry>> callback = ArgumentCaptor.forClass(Consumer.class);
+		verify(included).onClick(callback.capture());
+		callback.getValue().accept(included);
+		verify(plugin.configManager).setConfiguration("collection-celebrations", "includedPopupItems", "Mystic hat");
+		verify(plugin.configManager).setConfiguration("collection-celebrations", "excludedPopupItems", "Mystic *");
+	}
+
+	@Test
+	public void inclusionRemovalPreservesOtherRules()
+	{
+		when(plugin.config.includedPopupItems()).thenReturn("MYSTIC HAT, Rune *, mystic hat");
+		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
+		verify(included).setOption("Remove popup inclusion");
+		plugin.setPopupIncluded("Mystic hat", false);
+		verify(plugin.configManager).setConfiguration("collection-celebrations", "includedPopupItems", "Rune *");
+		verify(plugin.configManager, never()).setConfiguration(eq("collection-celebrations"), eq("excludedPopupItems"), anyString());
+	}
+
 }

@@ -199,7 +199,7 @@ class CelebrationOverlay extends Overlay
 			l.center(g, c.source == null ? "Source unavailable" : c.source, 240, 85, 13, config.colourStatLabel(), 420);
 			g.setColor(new Color(0, 0, 0, 120));
 			g.fillRect(l.p(24), l.p(96), l.p(432), l.p(3));
-			if (config.showProgressBar() && c.progressMax > 0)
+			if (!c.extraItem && config.showProgressBar() && c.progressMax > 0)
 			{
 				g.setColor(accent);
 				g.fillRect(l.p(24), l.p(96), l.p(432 * Math.max(0, Math.min(1.0, c.progressCount / (double)c.progressMax))),
@@ -217,6 +217,10 @@ class CelebrationOverlay extends Overlay
 				if (choice == PopupStat.DROP_RATE && c.dropRateText == null)
 				{
 					choice = PopupStat.VALUE;
+				}
+				if (c.extraItem && (choice == PopupStat.COLLECTION_COUNT || choice == PopupStat.WIKI_COMPLETION))
+				{
+					continue;
 				}
 				switch (choice)
 				{

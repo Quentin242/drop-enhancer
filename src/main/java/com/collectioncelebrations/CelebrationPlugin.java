@@ -22,6 +22,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.KeyCode;
+import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ChatMessage;
@@ -277,6 +278,7 @@ public class CelebrationPlugin extends Plugin
 			if (c.name.equalsIgnoreCase(name) && now - c.created < 2000)
 			{
 				c.newSlot = true;
+				c.extraItem = false;
 				return;
 			}
 		}
@@ -286,6 +288,7 @@ public class CelebrationPlugin extends Plugin
 			if (!recent.newSlot)
 			{
 				recent.newSlot = true;
+				recent.extraItem = false;
 				if (!recent.presented)
 				{
 					pending.add(recent);
@@ -318,13 +321,7 @@ public class CelebrationPlugin extends Plugin
 		// LootTracker emits this once for its NPC/chest/activity records. Do not additionally
 		// subscribe to NpcLootReceived and double-handle the same reward.
 		gate.noteReward(e.getName());
-		custom.onLootReceived(e, rawId -> {
-			int id = items.canonicalize(rawId);
-			ItemComposition item = items.getItemComposition(id);
-			String name = item == null ? "" : item.getName();
-			return ledger.get(id) != null || (name != null && knownLoggedNames.contains(name.toLowerCase(Locale.ROOT))) ||
-				wiki.entry(id, name) != null;
-		});
+
 		long now = now();
 		long rewardSequence = ++sequence;
 		Map<Integer, Integer> stacks = new LinkedHashMap<>();
@@ -336,6 +333,13 @@ public class CelebrationPlugin extends Plugin
 				stacks.merge(id, stack.getQuantity(), (a, b) -> (int)Math.min(Integer.MAX_VALUE, (long)a + b));
 			}
 		}
+		custom.onLootReceived(e, rawId -> {
+			int id = items.canonicalize(rawId);
+			ItemComposition item = items.getItemComposition(id);
+			String name = item == null ? "" : item.getName();
+			return ledger.get(id) != null || (name != null && knownLoggedNames.contains(name.toLowerCase(Locale.ROOT))) ||
+				wiki.entry(id, name) != null || popupIncluded(name, stacks.getOrDefault(id, 0));
+		});
 		for (Map.Entry<Integer, Integer> stack : stacks.entrySet())
 		{
 			int id = stack.getKey();
@@ -365,7 +369,8 @@ public class CelebrationPlugin extends Plugin
 				target = new Celebration(name, id, stack.getValue(), e.getName(), false, rewardSequence, now, gate.delayMillis());
 				boolean knownOwned = ledger.obtained(id) || knownLoggedNames.contains(name.toLowerCase(Locale.ROOT));
 				boolean collectionType = wiki.entry(id, name) != null;
-				if (config.repeatDrops() && (knownOwned || collectionType))
+				target.extraItem = !knownOwned && !collectionType && ledger.get(id) == null;
+				if (popupIncluded(name, stack.getValue()) || (config.repeatDrops() && (knownOwned || collectionType)))
 				{
 					// A received collection-item drop can be presented before personal quantities sync.
 					// Ownership and exact totals still require authoritative collection-log data.
@@ -398,29 +403,62 @@ public class CelebrationPlugin extends Plugin
 			return;
 		}
 		String name = item.getName();
-		boolean listed = popupExclusions().stream().anyMatch(name::equalsIgnoreCase);
-		client.createMenuEntry(-1)
-			.setOption(listed ? "Remove popup exclusion" : "Exclude from popups")
+		Menu submenu = client.getMenu().createMenuEntry(-1)
+			.setOption("Drop Enhancer")
 			.setTarget(event.getTarget())
 			.setType(MenuAction.RUNELITE)
-			.onClick(entry -> setPopupExcluded(name, !listed));
+			.createSubMenu();
+		boolean included = popupItems(config.includedPopupItems()).stream().anyMatch(name::equalsIgnoreCase);
+		boolean excluded = popupItems(config.excludedPopupItems()).stream().anyMatch(name::equalsIgnoreCase);
+		submenu.createMenuEntry(-1)
+			.setOption(included ? "Remove popup inclusion" : "Include in popups")
+			.setTarget(event.getTarget())
+			.setType(MenuAction.RUNELITE)
+			.onClick(entry -> setPopupIncluded(name, !included));
+		submenu.createMenuEntry(-1)
+			.setOption(excluded ? "Remove popup exclusion" : "Exclude from popups")
+			.setTarget(event.getTarget())
+			.setType(MenuAction.RUNELITE)
+			.onClick(entry -> setPopupExcluded(name, !excluded));
 	}
 
-	private List<String> popupExclusions()
+	private List<String> popupItems(String csv)
 	{
-		String csv = config.excludedPopupItems();
 		return new ArrayList<>(Text.fromCSV(csv == null ? "" : csv));
+	}
+
+	void setPopupIncluded(String name, boolean included)
+	{
+		setPopupItem("includedPopupItems", config.includedPopupItems(), name, included);
+		if (included)
+		{
+			setPopupItem("excludedPopupItems", config.excludedPopupItems(), name, false);
+		}
 	}
 
 	void setPopupExcluded(String name, boolean excluded)
 	{
-		List<String> entries = popupExclusions();
-		entries.removeIf(name::equalsIgnoreCase);
+		setPopupItem("excludedPopupItems", config.excludedPopupItems(), name, excluded);
 		if (excluded)
+		{
+			setPopupItem("includedPopupItems", config.includedPopupItems(), name, false);
+		}
+	}
+
+	private void setPopupItem(String key, String csv, String name, boolean enabled)
+	{
+		List<String> entries = popupItems(csv);
+		entries.removeIf(name::equalsIgnoreCase);
+		if (enabled)
 		{
 			entries.add(name);
 		}
-		configManager.setConfiguration("collection-celebrations", "excludedPopupItems", Text.toCSV(entries));
+		configManager.setConfiguration("collection-celebrations", key, Text.toCSV(entries));
+	}
+
+	private boolean popupIncluded(String name, int quantity)
+	{
+		return name != null && GroundItemSoundFilter.match(config.includedPopupItems(), name, quantity) > 0;
 	}
 
 	private boolean popupExcluded(Celebration c)
@@ -545,6 +583,7 @@ public class CelebrationPlugin extends Plugin
 		if (entry != null)
 		{
 			c.itemId = entry.id;
+			c.extraItem = false;
 			c.wikiCompletion = entry.completion;
 		}
 		if (c.itemId >= 0)
@@ -637,11 +676,13 @@ public class CelebrationPlugin extends Plugin
 					if (snapshot != null)
 					{
 						c.lastSyncedTotal = snapshot.quantity;
+						c.extraItem = false;
 					}
 					c.provisionalTotal = knownLoggedNames.contains(c.name.toLowerCase(Locale.ROOT)) ? 1 : 0;
 				}
 				preparePresentation(c);
-				if (!popupExcluded(c) && (c.previewTier != null || c.newSlot || (config.repeatDrops() && TierStyle.repeats(c.tier, config))))
+				if (!popupExcluded(c) && (c.previewTier != null || c.newSlot || popupIncluded(c.name, c.dropQuantity) ||
+					(!c.extraItem && config.repeatDrops() && TierStyle.repeats(c.tier, config))))
 				{
 					presentationStarted = true;
 					c.presented = true;

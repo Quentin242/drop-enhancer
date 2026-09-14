@@ -640,4 +640,85 @@ public class CelebrationFlowTest
 		verify(p.sounds).tick(p.time);
 	}
 
+	@Test
+	public void includedCommonRepeatOverridesDisabledTier()
+	{
+		RarityResult common = new RarityResult(RarityTier.COMMON, ITEM, 0, false, null, null, 0, 0, 0, 0, 0, 0);
+		when(p.wiki.resolve(ITEM, NAME)).thenReturn(common);
+		sync(2);
+		when(p.config.repeatCommon()).thenReturn(false);
+		when(p.config.includedPopupItems()).thenReturn(NAME);
+		loot();
+		Celebration c = release();
+		assertFalse(c.newSlot);
+		assertFalse(c.extraItem);
+		assertEquals(PreviewTier.COMMON, c.tier);
+		verify(p.sounds).playNow("CollectionLog.wav", 70);
+	}
+
+	@Test
+	public void includedExtraItemOverridesGlobalRepeatWithoutClaimingOwnership()
+	{
+		when(p.config.repeatDrops()).thenReturn(false);
+		when(p.config.includedPopupItems()).thenReturn("Bandos *");
+		loot();
+		Celebration c = release();
+		assertTrue(c.extraItem);
+		assertFalse(c.newSlot);
+		assertNull(c.confirmedTotal);
+		assertNull(c.lastSyncedTotal);
+		assertEquals(0, c.provisionalTotal);
+		ArgumentCaptor<java.util.function.IntPredicate> classifier = ArgumentCaptor.forClass(java.util.function.IntPredicate.class);
+		verify(p.custom).onLootReceived(any(), classifier.capture());
+		assertTrue(classifier.getValue().test(ITEM));
+	}
+
+	@Test
+	public void exclusionsWinOverInclusions()
+	{
+		when(p.config.includedPopupItems()).thenReturn(NAME);
+		when(p.config.excludedPopupItems()).thenReturn("Bandos *");
+		loot();
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		verify(p.sounds, never()).playNow(anyString(), anyInt());
+	}
+
+	@Test
+	public void removingInclusionWhileHeldSuppressesExtraItem()
+	{
+		when(p.config.includedPopupItems()).thenReturn(NAME);
+		loot();
+		when(p.config.includedPopupItems()).thenReturn("");
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+	}
+
+	@Test
+	public void includedExtraItemCanBecomeGenuineUnlock()
+	{
+		when(p.config.includedPopupItems()).thenReturn(NAME);
+		loot();
+		chat("New item added to your collection log: " + NAME);
+		Celebration c = release();
+		assertTrue(c.newSlot);
+		assertFalse(c.extraItem);
+	}
+
+	@Test
+	public void inclusionQuantityUsesMergedReceivedStacks()
+	{
+		when(p.config.includedPopupItems()).thenReturn("Bandos * > 1");
+		p.onLootReceived(new LootReceived("General Graardor", 624, LootRecordType.NPC,
+			List.of(new ItemStack(ITEM, 1), new ItemStack(ITEM, 1)), 1, null));
+		Celebration c = release();
+		assertTrue(c.extraItem);
+		assertEquals(2, c.dropQuantity);
+		ArgumentCaptor<java.util.function.IntPredicate> classifier = ArgumentCaptor.forClass(java.util.function.IntPredicate.class);
+		verify(p.custom).onLootReceived(any(), classifier.capture());
+		assertTrue(classifier.getValue().test(ITEM));
+	}
+
 }
