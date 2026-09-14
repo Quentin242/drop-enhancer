@@ -574,6 +574,23 @@ public class CelebrationPlugin extends Plugin
 		return result == null ? 0 : PreviewTier.valueOf(result.getTier().name()).ordinal();
 	}
 
+	private long valuePriority(Celebration c)
+	{
+		WikiRarity.Entry entry = wiki.entry(c.itemId, c.name);
+		int id = entry != null ? entry.id : c.itemId >= 0 ? c.itemId : names.getOrDefault(c.name.toLowerCase(Locale.ROOT), -1);
+		ItemComposition item = id < 0 ? null : items.getItemComposition(id);
+		return item == null ? 0 : itemValue(id, item, c.dropQuantity);
+	}
+
+	private long itemValue(int id, ItemComposition item, int quantity)
+	{
+		long ge = Math.max(0, items.getItemPrice(id));
+		long ha = Math.max(0, item.getHaPrice());
+		long unit = config.valueMode() == ValueMode.HIGH_ALCH ? ha
+			: config.valueMode() == ValueMode.HIGHEST ? Math.max(ge, ha) : ge;
+		return unit * Math.max(1, quantity);
+	}
+
 	private void preparePresentation(Celebration c)
 	{
 		c.dropRateText = wiki.dropRateText(c.source, c.name);
@@ -592,12 +609,7 @@ public class CelebrationPlugin extends Plugin
 			if (item != null)
 			{
 				c.untradeable = !item.isTradeable();
-				long ge = Math.max(0, items.getItemPrice(c.itemId));
-				long ha = Math.max(0, item.getHaPrice());
-				long unit = config.valueMode() == ValueMode.HIGH_ALCH ? ha
-							: config.valueMode() == ValueMode.HIGHEST ? Math.max(ge, ha)
-																	  : ge;
-				c.value = unit * Math.max(1, c.dropQuantity);
+				c.value = itemValue(c.itemId, item, c.dropQuantity);
 				RarityResult resolved = wiki.resolve(c.itemId, c.name);
 				if (resolved != null)
 				{
@@ -653,8 +665,11 @@ public class CelebrationPlugin extends Plugin
 		if (overlay.idle() && !hold && !sounds.busy())
 		{
 			Map<Celebration, Integer> priorities = new IdentityHashMap<>();
-			Celebration c =
-				pending.poll(n -> now >= n.due, Comparator.comparingInt(n -> priorities.computeIfAbsent(n, this::rarityPriority)));
+			Map<Celebration, Long> values = new IdentityHashMap<>();
+			Comparator<Celebration> order = Comparator.comparing((Celebration c) -> c.newSlot)
+				.thenComparingInt(c -> priorities.computeIfAbsent(c, this::rarityPriority))
+				.thenComparingLong(c -> values.computeIfAbsent(c, this::valuePriority));
+			Celebration c = pending.poll(n -> now >= n.due, order);
 			if (c == null && pending.size() == 0)
 			{
 				c = previews.poll(n -> true, Comparator.comparingInt(this::rarityPriority));

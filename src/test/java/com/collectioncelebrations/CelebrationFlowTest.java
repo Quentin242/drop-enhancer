@@ -721,4 +721,79 @@ public class CelebrationFlowTest
 		assertTrue(classifier.getValue().test(ITEM));
 	}
 
+	private void queuedItem(int id, String name, RarityTier tier, int price, int quantity, boolean unlock)
+	{
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn(name);
+		when(item.getHaPrice()).thenReturn(price / 2);
+		when(p.items.canonicalize(id)).thenReturn(id);
+		when(p.items.getItemComposition(id)).thenReturn(item);
+		when(p.items.getItemPrice(id)).thenReturn(price);
+		when(p.wiki.entry(id, name)).thenReturn(new WikiRarity.Entry(id, name, null, false, List.of()));
+		when(p.wiki.resolve(id, name)).thenReturn(new RarityResult(tier, id, price, false, null, null, 0, 0, 0, 0, 0, price / 2));
+		p.onLootReceived(new LootReceived("Chest", 1, LootRecordType.NPC, List.of(new ItemStack(id, quantity)), 1, null));
+		if (unlock)
+		{
+			chat("New item added to your collection log: " + name);
+		}
+	}
+
+	private void assertReleaseOrder(String... names)
+	{
+		for (String name : names)
+		{
+			clearInvocations(p.overlay);
+			assertEquals(name, release().name);
+		}
+	}
+
+	@Test
+	public void newLogsAlwaysPrecedeRepeatsThenRarityThenValue()
+	{
+		queuedItem(101, "Expensive repeat", RarityTier.VERY_RARE, 1000000, 1, false);
+		queuedItem(102, "Cheap new common", RarityTier.COMMON, 1, 1, true);
+		queuedItem(103, "New rare", RarityTier.RARE, 10, 1, true);
+		queuedItem(104, "Valuable new common", RarityTier.COMMON, 1000, 1, true);
+		queuedItem(105, "Cheap repeat", RarityTier.COMMON, 1, 1, false);
+		queuedItem(106, "Valuable repeat", RarityTier.COMMON, 1000, 1, false);
+		assertReleaseOrder("New rare", "Valuable new common", "Cheap new common", "Expensive repeat", "Valuable repeat", "Cheap repeat");
+	}
+
+	@Test
+	public void valueTieBreakerUsesReceivedStackAndKeepsEqualValuesInOrder()
+	{
+		queuedItem(101, "Single expensive", RarityTier.COMMON, 100, 1, true);
+		queuedItem(102, "Large stack", RarityTier.COMMON, 60, 2, true);
+		queuedItem(103, "Equal later stack", RarityTier.COMMON, 40, 3, true);
+		assertReleaseOrder("Large stack", "Equal later stack", "Single expensive");
+	}
+
+	@Test
+	public void valueTieBreakerFollowsConfiguredAlchMode()
+	{
+		when(p.config.valueMode()).thenReturn(ValueMode.HIGH_ALCH);
+		queuedItem(101, "Higher GE", RarityTier.COMMON, 1000, 1, false);
+		queuedItem(102, "Higher alch", RarityTier.COMMON, 10, 1, false);
+		when(p.items.getItemComposition(102).getHaPrice()).thenReturn(2000);
+		assertReleaseOrder("Higher alch", "Higher GE");
+	}
+
+	@Test
+	public void newLogDoesNotInterruptVisibleRepeatAndWaitsForCaseHold()
+	{
+		queuedItem(101, "Visible repeat", RarityTier.COMMON, 1, 1, false);
+		assertEquals("Visible repeat", release().name);
+		when(p.overlay.idle()).thenReturn(false);
+		queuedItem(102, "New rare", RarityTier.RARE, 100, 1, true);
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, times(1)).show(any(), anyLong());
+		when(p.overlay.idle()).thenReturn(true);
+		when(p.gate.blocked()).thenReturn(true);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, times(1)).show(any(), anyLong());
+		when(p.gate.blocked()).thenReturn(false);
+		assertReleaseOrder("New rare");
+	}
+
 }
