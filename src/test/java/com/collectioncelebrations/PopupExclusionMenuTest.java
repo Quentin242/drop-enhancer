@@ -81,21 +81,18 @@ public class PopupExclusionMenuTest
 	{
 		when(plugin.config.excludedPopupItems()).thenReturn("Bones, MYSTIC HAT, Rune *, mystic hat");
 		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
-		verify(added).setOption("Remove popup exclusion");
+		verify(included).setOption("Remove popup exclusion");
+		verify(submenu, times(1)).createMenuEntry(-1);
 		plugin.setPopupExcluded("Mystic hat", false);
 		ArgumentCaptor<String> csv = ArgumentCaptor.forClass(String.class);
 		verify(plugin.configManager).setConfiguration(eq("collection-celebrations"), eq("excludedPopupItems"), csv.capture());
 		assertEquals(java.util.List.of("Bones", "Rune *"), Text.fromCSV(csv.getValue().toString()));
 	}
 	@Test
-	public void inclusionClickRemovesExactExclusionButPreservesWildcard()
+	public void inclusionListUpdateRemovesExactExclusionButPreservesWildcard()
 	{
 		when(plugin.config.excludedPopupItems()).thenReturn("Mystic hat, Mystic *");
-		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
-		verifyNoInteractions(plugin.configManager);
-		ArgumentCaptor<Consumer<MenuEntry>> callback = ArgumentCaptor.forClass(Consumer.class);
-		verify(included).onClick(callback.capture());
-		callback.getValue().accept(included);
+		plugin.setPopupIncluded("Mystic hat", true);
 		verify(plugin.configManager).setConfiguration("collection-celebrations", "includedPopupItems", "Mystic hat");
 		verify(plugin.configManager).setConfiguration("collection-celebrations", "excludedPopupItems", "Mystic *");
 	}
@@ -106,9 +103,43 @@ public class PopupExclusionMenuTest
 		when(plugin.config.includedPopupItems()).thenReturn("MYSTIC HAT, Rune *, mystic hat");
 		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
 		verify(included).setOption("Remove popup inclusion");
+		verify(submenu, times(1)).createMenuEntry(-1);
 		plugin.setPopupIncluded("Mystic hat", false);
 		verify(plugin.configManager).setConfiguration("collection-celebrations", "includedPopupItems", "Rune *");
 		verify(plugin.configManager, never()).setConfiguration(eq("collection-celebrations"), eq("excludedPopupItems"), anyString());
+	}
+
+	@Test
+	public void conflictingOldProfileOffersOnlyExclusionRemovalAndClearsBoth()
+	{
+		when(plugin.config.includedPopupItems()).thenReturn("Mystic hat");
+		when(plugin.config.excludedPopupItems()).thenReturn("MYSTIC HAT");
+		plugin.onMenuEntryAdded(new MenuEntryAdded(original));
+		verify(submenu, times(1)).createMenuEntry(-1);
+		verify(included).setOption("Remove popup exclusion");
+		ArgumentCaptor<Consumer<MenuEntry>> callback = ArgumentCaptor.forClass(Consumer.class);
+		verify(included).onClick(callback.capture());
+		callback.getValue().accept(included);
+		verify(plugin.configManager).setConfiguration("collection-celebrations", "includedPopupItems", "");
+		verify(plugin.configManager).setConfiguration("collection-celebrations", "excludedPopupItems", "");
+	}
+
+	@Test
+	public void nativeListEditsRemoveSameRulesFromOppositeListInEitherDirection()
+	{
+		for (String key : java.util.List.of("includedPopupItems", "excludedPopupItems"))
+		{
+			clearInvocations(plugin.configManager);
+			when(plugin.config.includedPopupItems()).thenReturn("Mystic hat, Rune *, Bones");
+			when(plugin.config.excludedPopupItems()).thenReturn("MYSTIC HAT, rune *, Coins");
+			net.runelite.client.events.ConfigChanged event = new net.runelite.client.events.ConfigChanged();
+			event.setGroup("collection-celebrations");
+			event.setKey(key);
+			plugin.onConfigChanged(event);
+			boolean include = key.equals("includedPopupItems");
+			verify(plugin.configManager).setConfiguration("collection-celebrations",
+				include ? "excludedPopupItems" : "includedPopupItems", include ? "Coins" : "Bones");
+		}
 	}
 
 }

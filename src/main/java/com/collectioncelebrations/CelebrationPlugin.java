@@ -409,16 +409,29 @@ public class CelebrationPlugin extends Plugin
 			.createSubMenu();
 		boolean included = popupItems(config.includedPopupItems()).stream().anyMatch(name::equalsIgnoreCase);
 		boolean excluded = popupItems(config.excludedPopupItems()).stream().anyMatch(name::equalsIgnoreCase);
-		submenu.createMenuEntry(-1)
-			.setOption(included ? "Remove popup inclusion" : "Include in popups")
-			.setTarget(event.getTarget())
-			.setType(MenuAction.RUNELITE)
-			.onClick(entry -> setPopupIncluded(name, !included));
-		submenu.createMenuEntry(-1)
-			.setOption(excluded ? "Remove popup exclusion" : "Exclude from popups")
-			.setTarget(event.getTarget())
-			.setType(MenuAction.RUNELITE)
-			.onClick(entry -> setPopupExcluded(name, !excluded));
+		if (!excluded)
+		{
+			submenu.createMenuEntry(-1)
+				.setOption(included ? "Remove popup inclusion" : "Include in popups")
+				.setTarget(event.getTarget())
+				.setType(MenuAction.RUNELITE)
+				.onClick(entry -> setPopupIncluded(name, !included));
+		}
+		if (!included || excluded)
+		{
+			submenu.createMenuEntry(-1)
+				.setOption(excluded ? "Remove popup exclusion" : "Exclude from popups")
+				.setTarget(event.getTarget())
+				.setType(MenuAction.RUNELITE)
+				.onClick(entry -> {
+					// Older profiles may contain the exact name in both lists.
+					if (included && excluded)
+					{
+						setPopupIncluded(name, false);
+					}
+					setPopupExcluded(name, !excluded);
+				});
+		}
 	}
 
 	private List<String> popupItems(String csv)
@@ -428,20 +441,20 @@ public class CelebrationPlugin extends Plugin
 
 	void setPopupIncluded(String name, boolean included)
 	{
-		setPopupItem("includedPopupItems", config.includedPopupItems(), name, included);
 		if (included)
 		{
 			setPopupItem("excludedPopupItems", config.excludedPopupItems(), name, false);
 		}
+		setPopupItem("includedPopupItems", config.includedPopupItems(), name, included);
 	}
 
 	void setPopupExcluded(String name, boolean excluded)
 	{
-		setPopupItem("excludedPopupItems", config.excludedPopupItems(), name, excluded);
 		if (excluded)
 		{
 			setPopupItem("includedPopupItems", config.includedPopupItems(), name, false);
 		}
+		setPopupItem("excludedPopupItems", config.excludedPopupItems(), name, excluded);
 	}
 
 	private void setPopupItem(String key, String csv, String name, boolean enabled)
@@ -453,6 +466,18 @@ public class CelebrationPlugin extends Plugin
 			entries.add(name);
 		}
 		configManager.setConfiguration("collection-celebrations", key, Text.toCSV(entries));
+	}
+
+	private void removeOppositePopupRules(String changedKey)
+	{
+		boolean inclusion = "includedPopupItems".equals(changedKey);
+		List<String> selected = popupItems(inclusion ? config.includedPopupItems() : config.excludedPopupItems());
+		List<String> opposite = popupItems(inclusion ? config.excludedPopupItems() : config.includedPopupItems());
+		if (opposite.removeIf(rule -> selected.stream().anyMatch(rule::equalsIgnoreCase)))
+		{
+			configManager.setConfiguration("collection-celebrations", inclusion ? "excludedPopupItems" : "includedPopupItems",
+				Text.toCSV(opposite));
+		}
 	}
 
 	private boolean popupIncluded(String name, int quantity)
@@ -470,6 +495,11 @@ public class CelebrationPlugin extends Plugin
 	{
 		if (!"collection-celebrations".equals(event.getGroup()))
 		{
+			return;
+		}
+		if ("includedPopupItems".equals(event.getKey()) || "excludedPopupItems".equals(event.getKey()))
+		{
+			removeOppositePopupRules(event.getKey());
 			return;
 		}
 		if (!"previewSelection".equals(event.getKey()) && !"previewKind".equals(event.getKey()))
