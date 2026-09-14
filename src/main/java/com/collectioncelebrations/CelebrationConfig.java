@@ -79,7 +79,7 @@ public interface CelebrationConfig extends Config
 				position = 3)
 	default int displaySeconds()
 	{
-		return 3;
+		return 4;
 	}
 	@ConfigItem(keyName = "accent", name = "Accent", description = "Popup accent colour", section = appearance, position = 22)
 	default Color accent()
