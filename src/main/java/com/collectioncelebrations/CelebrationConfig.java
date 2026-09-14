@@ -494,12 +494,6 @@ public interface CelebrationConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(keyName = "showProgressBar", name = "Show collection progress",
-				description = "Overall logged slots from the game's own collection counters", section = appearance, position = 8)
-	default boolean showProgressBar()
-	{
-		return true;
-	}
 	@ConfigItem(keyName = "bulkUnlockSfx", name = "One sound per reward",
 				description = "Play one collection sound for multiple items from the same loot event", section = rarity, position = 3)
 	default boolean bulkUnlockSfx()

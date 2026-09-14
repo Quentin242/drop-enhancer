@@ -197,14 +197,6 @@ class CelebrationOverlay extends Overlay
 			String name = c.name + (c.dropQuantity > 1 ? " ×" + c.dropQuantity : "");
 			l.center(g, name, 240, 66, 24, config.colourItemName(), 432);
 			l.center(g, c.source == null ? "Source unavailable" : c.source, 240, 85, 13, config.colourStatLabel(), 420);
-			g.setColor(new Color(0, 0, 0, 120));
-			g.fillRect(l.p(24), l.p(96), l.p(432), l.p(3));
-			if (!c.extraItem && config.showProgressBar() && c.progressMax > 0)
-			{
-				g.setColor(accent);
-				g.fillRect(l.p(24), l.p(96), l.p(432 * Math.max(0, Math.min(1.0, c.progressCount / (double)c.progressMax))),
-						   Math.max(1, l.p(3)));
-			}
 			PopupStat[] choices = {config.stat1(), config.stat2(), config.stat3(), config.stat4()};
 			for (int i = 0; i < choices.length; i++)
 			{

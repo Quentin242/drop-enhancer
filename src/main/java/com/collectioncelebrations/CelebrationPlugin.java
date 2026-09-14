@@ -34,7 +34,6 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.gameval.VarClientID;
-import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -594,8 +593,6 @@ public class CelebrationPlugin extends Plugin
 	private void preparePresentation(Celebration c)
 	{
 		c.dropRateText = wiki.dropRateText(c.source, c.name);
-		c.progressCount = Math.max(0, client.getVarpValue(VarPlayerID.COLLECTION_COUNT));
-		c.progressMax = Math.max(0, client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
 		WikiRarity.Entry entry = wiki.entry(c.itemId, c.name);
 		if (entry != null)
 		{

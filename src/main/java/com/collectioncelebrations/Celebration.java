@@ -25,8 +25,6 @@ final class Celebration
 	boolean untradeable;
 	Double wikiCompletion;
 	String dropRateText;
-	int progressCount;
-	int progressMax;
 	long audioGroup;
 	Celebration(String name, int itemId, int dropQuantity, String source, boolean newSlot, long sequence, long now, long delay)
 	{
