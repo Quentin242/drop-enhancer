@@ -21,7 +21,7 @@ public class SoundQueueTest
 	{
 		sounds = spy(new SoundQueue());
 		audio = mock(Clip.class);
-		doReturn(audio).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(audio).when(sounds).openClip(any(java.io.File.class));
 		sounds.gate = mock(CaseGate.class);
 		sounds.config = mock(CelebrationConfig.class);
 		sounds.runeliteDirectory = temporary.getRoot();
@@ -69,7 +69,7 @@ public class SoundQueueTest
 	{
 		javax.sound.sampled.Clip first = mock(javax.sound.sampled.Clip.class);
 		javax.sound.sampled.Clip second = mock(javax.sound.sampled.Clip.class);
-		doReturn(first, second).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(first, second).when(sounds).openClip(any(java.io.File.class));
 		sounds.playPreview("test.wav", 80);
 		verify(first, timeout(1000)).start();
 		sounds.cancelPreview();
@@ -96,7 +96,7 @@ public class SoundQueueTest
 		})
 			.when(first)
 			.stop();
-		doReturn(first, second).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(first, second).when(sounds).openClip(any(java.io.File.class));
 		doAnswer(call -> {
 			drained.countDown();
 			return null;
@@ -158,7 +158,7 @@ public class SoundQueueTest
 	{
 		javax.sound.sampled.Clip tier = mock(javax.sound.sampled.Clip.class);
 		javax.sound.sampled.Clip jingle = mock(javax.sound.sampled.Clip.class);
-		doReturn(tier, jingle).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(tier, jingle).when(sounds).openClip(any(java.io.File.class));
 		sounds.playPreview("test.wav", 80, "test.wav", 60);
 		verify(tier, timeout(1000)).start();
 		verify(jingle, timeout(1000)).start();
@@ -208,7 +208,7 @@ public class SoundQueueTest
 			return audio;
 		})
 			.when(sounds)
-			.openPreviewClip(any(java.io.File.class));
+			.openClip(any(java.io.File.class));
 		try
 		{
 			sounds.playNow("test.wav", 80);
@@ -229,7 +229,7 @@ public class SoundQueueTest
 		Clip jingle = mock(Clip.class);
 		when(audio.getFrameLength()).thenReturn(22050);
 		when(audio.getMicrosecondLength()).thenReturn(500000L);
-		doReturn(audio, jingle).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(audio, jingle).when(sounds).openClip(any(java.io.File.class));
 		sounds.playPreview("test.wav", 80, "test.wav", 50);
 		verify(jingle, timeout(1000)).start();
 		verify(audio, never()).close();
@@ -244,7 +244,7 @@ public class SoundQueueTest
 		Clip next = mock(Clip.class);
 		when(audio.isRunning()).thenReturn(true);
 		doThrow(new IllegalStateException("device disconnected")).when(audio).stop();
-		doReturn(audio, jingle, next).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(audio, jingle, next).when(sounds).openClip(any(java.io.File.class));
 		sounds.playPreview("test.wav", 80, "test.wav", 50);
 		verify(jingle, timeout(1000)).start();
 		sounds.cancelPreview();
@@ -260,7 +260,7 @@ public class SoundQueueTest
 		Clip next = mock(Clip.class);
 		doThrow(new IllegalStateException("device disconnected")).when(audio).start();
 		doThrow(new IllegalStateException("already disconnected")).when(audio).close();
-		doReturn(audio, next).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(audio, next).when(sounds).openClip(any(java.io.File.class));
 		sounds.playNow("test.wav", 80);
 		sounds.playNow("test.wav", 80);
 		verify(next, timeout(1000)).start();
@@ -275,7 +275,7 @@ public class SoundQueueTest
 		when(audio.getLongFramePosition()).thenReturn(22050L);
 		when(audio.getMicrosecondLength()).thenReturn(500000L);
 		Clip next = mock(Clip.class);
-		doReturn(audio, next).when(sounds).openPreviewClip(any(java.io.File.class));
+		doReturn(audio, next).when(sounds).openClip(any(java.io.File.class));
 		sounds.playNow("test.wav", 80);
 		verify(audio, timeout(1000)).start();
 		// Let the worker finish its pending-open accounting; the audio clock stays fixed.

@@ -101,12 +101,26 @@ public interface CelebrationConfig extends Config
 		return 50;
 	}
 
-	@ConfigItem(keyName = "highlightSound", section = valueDrops, name = "Highlight Sound",
-				description = "Configure whether or not to play a sound when a highlighted (ground item plugin) item appears",
+	@ConfigItem(keyName = "highlightedItemSound", section = valueDrops, name = "Highlighted item sound",
+				description = "Play at least Common for highlighted drops; scale up with value and collection rarity.", position = 28)
+	default boolean highlightedItemSound()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "highlightPopup", section = valueDrops, name = "Highlight popup",
+				description = "Show popups for highlighted drops, including non-collection items. Overrides repeat switches; exclusions and Show popups still apply.", position = 29)
+	default boolean highlightPopup()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "highlightSound", section = valueDrops, name = "Custom highlighted sound",
+				description = "Override value-tier audio for highlighted items. Off uses at least Common, scaling up with value and collection rarity.",
 				position = 30)
 	default boolean highlightSound()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(keyName = "highlightedFile", name = "Highlighted item WAV",

@@ -185,6 +185,14 @@ class WikiRarity
 		for (Map.Entry<String, JsonElement> row : root.entrySet())
 		{
 			JsonObject obj = row.getValue().getAsJsonObject();
+			JsonElement itemName = obj.get("name");
+			// Wiki snapshots can contain unnamed placeholders. One placeholder must
+			// not prevent every valid collection item from being recognized.
+			if (itemName == null || itemName.isJsonNull() || !itemName.isJsonPrimitive() ||
+				!itemName.getAsJsonPrimitive().isString() || itemName.getAsString().isBlank())
+			{
+				continue;
+			}
 			int id = Integer.parseInt(row.getKey());
 			Double comp = obj.has("comp") && !obj.get("comp").isJsonNull() ? obj.get("comp").getAsDouble() : null;
 			if (id < 0 || (comp != null && (!Double.isFinite(comp) || comp < 0 || comp > 100)))
@@ -201,7 +209,7 @@ class WikiRarity
 					pet |= "All Pets".equalsIgnoreCase(tab.getAsString());
 				}
 			}
-			result.put(id, new Entry(id, obj.get("name").getAsString(), comp, pet, List.copyOf(tabs)));
+			result.put(id, new Entry(id, itemName.getAsString(), comp, pet, List.copyOf(tabs)));
 		}
 		return Collections.unmodifiableMap(result);
 	}

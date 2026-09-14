@@ -9,10 +9,8 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.grounditems.GroundItemsConfig;
 import net.runelite.client.plugins.loottracker.LootReceived;
-import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Locale;
 
 @javax.inject.Singleton
@@ -44,7 +42,7 @@ public class CustomSoundEvents
 	private static final String HIGHEST_SOUND_FILE = "highest_sound.wav";
 	private static final String DEFAULT_SOUND_FILE = "default_sound.wav";
 
-	private List<String> highlightedItemsList = List.of();
+	private String highlightedItems = "";
 
 	public void startUp()
 	{
@@ -53,7 +51,7 @@ public class CustomSoundEvents
 
 	public void shutDown()
 	{
-		highlightedItemsList = List.of();
+		highlightedItems = "";
 	}
 
 	@Subscribe
@@ -83,7 +81,7 @@ public class CustomSoundEvents
 		}
 		final String name = itemComposition.getName().toLowerCase(Locale.ROOT);
 
-		if (config.highlightSound() && highlightedItemsList.contains(name))
+		if (!collectionItem && config.highlightedItemSound() && config.highlightSound() && highlighted(name, quantity))
 		{
 			playSound(HIGHLIGHTED_SOUND_FILE);
 			return;
@@ -121,6 +119,15 @@ public class CustomSoundEvents
 
 		if (collectionItem)
 		{
+			return;
+		}
+		if (config.highlightedItemSound() && highlighted(name, quantity))
+		{
+			String file = highlightedValueFile(value);
+			if (valueSoundEnabled(file))
+			{
+				playValueSound(file, name);
+			}
 			return;
 		}
 		if (config.dropValueMode() == DropValueMode.GROUND_ITEMS &&
@@ -189,6 +196,83 @@ public class CustomSoundEvents
 		}
 	}
 
+	boolean highlighted(String name, int quantity)
+	{
+		if (name == null)
+		{
+			return false;
+		}
+		int priority = GroundItemSoundFilter.match(highlightedItems, name, quantity);
+		return priority > 0 && (config.dropValueMode() != DropValueMode.GROUND_ITEMS ||
+			GroundItemSoundFilter.match(groundItemsConfig.getHiddenItems(), name, quantity) <= priority);
+	}
+
+	String highlightedRewardFile(int id, int quantity, PreviewTier rarity)
+	{
+		return eventFile(highlightedRewardEvent(id, quantity, rarity));
+	}
+
+	int highlightedRewardVolume(int id, int quantity, PreviewTier rarity)
+	{
+		String event = highlightedRewardEvent(id, quantity, rarity);
+		boolean collectionTier = rarity != null && rarity.ordinal() >= eventTier(event).ordinal();
+		return event.equals(HIGHLIGHTED_SOUND_FILE) || collectionTier || valueSoundEnabled(event) ? eventVolume(event) : 0;
+	}
+
+	private String highlightedRewardEvent(int id, int quantity, PreviewTier rarity)
+	{
+		if (config.highlightSound())
+		{
+			return HIGHLIGHTED_SOUND_FILE;
+		}
+		ItemComposition item = itemManager.getItemComposition(id);
+		int ge = (int)Math.min(Integer.MAX_VALUE, (long)Math.max(0, itemManager.getItemPrice(id)) * quantity);
+		int ha = item == null ? 0 : (int)Math.min(Integer.MAX_VALUE, (long)Math.max(0, item.getHaPrice()) * quantity);
+		String valueEvent = highlightedValueFile(getValueByMode(ge, ha));
+		if (rarity == null || rarity.ordinal() <= eventTier(valueEvent).ordinal())
+		{
+			return valueEvent;
+		}
+		switch (rarity)
+		{
+		case PET:
+			return "pet_sound.wav";
+		case VERY_RARE:
+			return HIGHEST_SOUND_FILE;
+		case RARE:
+			return HIGH_SOUND_FILE;
+		case UNCOMMON:
+			return MEDIUM_SOUND_FILE;
+		default:
+			return DEFAULT_SOUND_FILE;
+		}
+	}
+
+	private String highlightedValueFile(int value)
+	{
+		boolean ground = config.dropValueMode() == DropValueMode.GROUND_ITEMS;
+		if (ground ? value > groundItemsConfig.insaneValuePrice() : value >= config.highestStart() && value < config.highestEnd())
+		{
+			return HIGHEST_SOUND_FILE;
+		}
+		if (ground ? value > groundItemsConfig.highValuePrice() : value >= config.highStart() && value < config.highEnd())
+		{
+			return HIGH_SOUND_FILE;
+		}
+		if (ground ? value > groundItemsConfig.mediumValuePrice() : value >= config.mediumStart() && value < config.mediumEnd())
+		{
+			return MEDIUM_SOUND_FILE;
+		}
+		return DEFAULT_SOUND_FILE;
+	}
+
+	private boolean valueSoundEnabled(String file)
+	{
+		return file.equals(HIGHEST_SOUND_FILE) ? config.highestValueSound() :
+			file.equals(HIGH_SOUND_FILE) ? config.highValueSound() :
+			file.equals(MEDIUM_SOUND_FILE) ? config.mediumValueSound() : true;
+	}
+
 	private void playValueSound(String f, String itemName)
 	{
 		soundQueue.offerValue(eventFile(f), eventVolume(f), itemName);
@@ -202,6 +286,8 @@ public class CustomSoundEvents
 	{
 		switch (file)
 		{
+		case "pet_sound.wav":
+			return PreviewTier.PET;
 		case "highest_sound.wav":
 		case "elite_clue_sound.wav":
 		case "master_clue_sound.wav":
@@ -268,6 +354,6 @@ public class CustomSoundEvents
 
 	private void updateHighlightedItemsList()
 	{
-		highlightedItemsList = Text.fromCSV(groundItemsConfig.getHighlightItems().toLowerCase(Locale.ROOT));
+		highlightedItems = groundItemsConfig.getHighlightItems();
 	}
 }

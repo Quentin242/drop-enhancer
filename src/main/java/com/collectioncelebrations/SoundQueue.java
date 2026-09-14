@@ -26,7 +26,7 @@ class SoundQueue
 	private volatile int generation;
 	private volatile int previewGeneration;
 	// Each worker owns its clips, including cleanup after a quick disable/re-enable.
-	private static final class PreviewPlayback
+	private static final class AudioPlayback
 	{
 		final List<javax.sound.sampled.Clip> clips = new java.util.concurrent.CopyOnWriteArrayList<>();
 		final java.util.Map<javax.sound.sampled.Clip, Long> deadlines = new java.util.concurrent.ConcurrentHashMap<>();
@@ -60,8 +60,8 @@ class SoundQueue
 		}
 	}
 
-	private PreviewPlayback preview;
-	private PreviewPlayback rewards;
+	private AudioPlayback preview;
+	private AudioPlayback rewards;
 	private volatile long openingSince;
 	long monotonicMillis()
 	{
@@ -81,7 +81,7 @@ class SoundQueue
 		}
 		return worker != null && (pendingAudio.get() > 0 || playing(preview) || playing(rewards));
 	}
-	private boolean playing(PreviewPlayback playback)
+	private boolean playing(AudioPlayback playback)
 	{
 		if (playback == null)
 		{
@@ -127,8 +127,8 @@ class SoundQueue
 	void start()
 	{
 		pendingAudio = new java.util.concurrent.atomic.AtomicInteger();
-		preview = new PreviewPlayback();
-		rewards = new PreviewPlayback();
+		preview = new AudioPlayback();
+		rewards = new AudioPlayback();
 		worker = Executors.newSingleThreadExecutor(r -> {
 			Thread t = new Thread(r, "collection-celebrations-audio");
 			t.setDaemon(true);
@@ -142,7 +142,7 @@ class SoundQueue
 		cancelPreview();
 		if (worker != null)
 		{
-			PreviewPlayback old = rewards;
+			AudioPlayback old = rewards;
 			worker.execute(old::close);
 		}
 	}
@@ -214,11 +214,11 @@ class SoundQueue
 		previewGeneration++;
 		if (worker != null)
 		{
-			PreviewPlayback playback = preview;
+			AudioPlayback playback = preview;
 			worker.execute(playback::close);
 		}
 	}
-	javax.sound.sampled.Clip openPreviewClip(File file) throws Exception
+	javax.sound.sampled.Clip openClip(File file) throws Exception
 	{
 		javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
 		try (javax.sound.sampled.AudioInputStream input = SoundResources.open(file))
@@ -243,7 +243,7 @@ class SoundQueue
 			return;
 		}
 		int token = previewGeneration;
-		PreviewPlayback playback = preview;
+		AudioPlayback playback = preview;
 		java.util.concurrent.atomic.AtomicInteger counter = pendingAudio;
 		if (counter.getAndIncrement() == 0)
 		{
@@ -257,8 +257,8 @@ class SoundQueue
 					return;
 				}
 				playback.close();
-				openPreviewLayer(playback, name, volume, token);
-				openPreviewLayer(playback, unlockName, unlockVolume, token);
+				openLayer(playback, name, volume, token, true);
+				openLayer(playback, unlockName, unlockVolume, token, true);
 			}
 			finally
 			{
@@ -266,11 +266,7 @@ class SoundQueue
 			}
 		});
 	}
-	private void openPreviewLayer(PreviewPlayback playback, String name, int volume, int token)
-	{
-		openLayer(playback, name, volume, token, true);
-	}
-	private void openLayer(PreviewPlayback playback, String name, int volume, int token, boolean test)
+	private void openLayer(AudioPlayback playback, String name, int volume, int token, boolean test)
 	{
 		if (token != (test ? previewGeneration : generation) || volume <= 0 || !validName(name))
 		{
@@ -278,7 +274,7 @@ class SoundQueue
 		}
 		try
 		{
-			javax.sound.sampled.Clip clip = openPreviewClip(file(name));
+			javax.sound.sampled.Clip clip = openClip(file(name));
 			try
 			{
 				if (token != (test ? previewGeneration : generation))
@@ -314,7 +310,7 @@ class SoundQueue
 		}
 		catch (Exception e)
 		{
-			log.debug("Unable to play preview {}", name, e);
+			log.debug("Unable to play sound {}", name, e);
 		}
 	}
 
@@ -325,7 +321,7 @@ class SoundQueue
 			return;
 		}
 		int session = generation;
-		PreviewPlayback playback = rewards;
+		AudioPlayback playback = rewards;
 		java.util.concurrent.atomic.AtomicInteger counter = pendingAudio;
 		if (counter.getAndIncrement() == 0)
 		{

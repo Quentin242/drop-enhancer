@@ -220,4 +220,113 @@ public class CustomSoundEventsTest
 		events.onLootReceived(new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 1)), 1, null), id -> false);
 		verify(events.soundQueue).offer("highlight.wav", 30, 0, true);
 	}
+	@Test
+	public void highlightedDefaultsToCommonAndHigherValuesWin()
+	{
+		org.junit.Assert.assertFalse(new CelebrationConfig() {}.highlightSound());
+		when(events.config.mediumValueSound()).thenReturn(true);
+		when(events.config.highValueSound()).thenReturn(true);
+		when(events.config.highestValueSound()).thenReturn(true);
+		when(events.groundItemsConfig.mediumValuePrice()).thenReturn(200);
+		when(events.groundItemsConfig.highValuePrice()).thenReturn(300);
+		when(events.groundItemsConfig.insaneValuePrice()).thenReturn(400);
+		when(events.groundItemsConfig.getHighlightItems()).thenReturn("Broken * > 1");
+		events.startUp();
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Broken antler");
+		when(events.itemManager.getItemComposition(31086)).thenReturn(item);
+		LootReceived loot = new LootReceived("Mature custodian stalker", 1, LootRecordType.NPC,
+			List.of(new ItemStack(31086, 2)), 1, null);
+		int[] unitPrices = {0, 100, 150, 151, 200, 201};
+		String[] files = {"custom-sounds-common.wav", "custom-sounds-common.wav", "drop-enhancer-uncommon.wav",
+			"custom-sounds-rare.wav", "custom-sounds-rare.wav", "custom-sounds-veryrare.wav"};
+		for (int n = 0; n < unitPrices.length; n++)
+		{
+			clearInvocations(events.soundQueue);
+			when(events.itemManager.getItemPrice(31086)).thenReturn(unitPrices[n]);
+			events.onLootReceived(loot, id -> false);
+			verify(events.soundQueue).offerValue(files[n], 50, "broken antler");
+			org.junit.Assert.assertEquals(files[n], events.highlightedRewardFile(31086, 2, null));
+			org.junit.Assert.assertEquals(50, events.highlightedRewardVolume(31086, 2, null));
+			verifyNoMoreInteractions(events.soundQueue);
+		}
+	}
+
+	@Test
+	public void highlightedCustomRangesRespectPriceBasisAndMute()
+	{
+		when(events.config.dropValueMode()).thenReturn(DropValueMode.HIGH_ALCH);
+		when(events.config.mediumValueSound()).thenReturn(true);
+		when(events.config.highValueSound()).thenReturn(true);
+		when(events.config.highStart()).thenReturn(300);
+		when(events.config.highEnd()).thenReturn(1000);
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Test item");
+		when(events.itemManager.getItemComposition(1)).thenReturn(item);
+		when(events.itemManager.getItemPrice(1)).thenReturn(1000000);
+		LootReceived loot = new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 2)), 1, null);
+		events.onLootReceived(loot, id -> false);
+		verify(events.soundQueue).offerValue("custom-sounds-common.wav", 50, "test item");
+		clearInvocations(events.soundQueue);
+		when(item.getHaPrice()).thenReturn(150);
+		events.onLootReceived(loot, id -> false);
+		verify(events.soundQueue).offerValue("custom-sounds-rare.wav", 50, "test item");
+		clearInvocations(events.soundQueue);
+		when(events.config.highValueSound()).thenReturn(false);
+		events.onLootReceived(loot, id -> false);
+		verifyNoInteractions(events.soundQueue);
+	}
+
+	@Test
+	public void highlightedCollectionItemHasNoDuplicateStandaloneSound()
+	{
+		when(events.config.highlightSound()).thenReturn(true);
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Test item");
+		when(events.itemManager.getItemComposition(1)).thenReturn(item);
+		events.onLootReceived(new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 1)), 1, null), id -> true);
+		verifyNoInteractions(events.soundQueue);
+	}
+
+	@Test
+	public void exactHiddenRuleOutranksWildcardHighlight()
+	{
+		when(events.groundItemsConfig.getHighlightItems()).thenReturn("Broken *");
+		when(events.groundItemsConfig.getHiddenItems()).thenReturn("Broken antler");
+		events.startUp();
+		org.junit.Assert.assertFalse(events.highlighted("Broken antler", 1));
+		when(events.groundItemsConfig.getHighlightItems()).thenReturn("Broken antler");
+		events.startUp();
+		org.junit.Assert.assertTrue(events.highlighted("Broken antler", 1));
+	}
+
+	@Test
+	public void highlightedRarityAndValueChooseHigherTierWithoutDefeatingMute()
+	{
+		ItemComposition item = mock(ItemComposition.class);
+		when(events.itemManager.getItemComposition(1)).thenReturn(item);
+		when(events.groundItemsConfig.mediumValuePrice()).thenReturn(100);
+		when(events.groundItemsConfig.highValuePrice()).thenReturn(200);
+		when(events.groundItemsConfig.insaneValuePrice()).thenReturn(300);
+		org.junit.Assert.assertEquals("custom-sounds-rare.wav", events.highlightedRewardFile(1, 1, PreviewTier.RARE));
+		org.junit.Assert.assertEquals(50, events.highlightedRewardVolume(1, 1, PreviewTier.RARE));
+		when(events.config.soundEnabledRare()).thenReturn(false);
+		org.junit.Assert.assertEquals(0, events.highlightedRewardVolume(1, 1, PreviewTier.RARE));
+		when(events.itemManager.getItemPrice(1)).thenReturn(400);
+		org.junit.Assert.assertEquals("custom-sounds-veryrare.wav", events.highlightedRewardFile(1, 1, PreviewTier.UNCOMMON));
+		org.junit.Assert.assertEquals("drop-enhancer-pet.wav", events.highlightedRewardFile(1, 1, PreviewTier.PET));
+	}
+
+	@Test
+	public void highlightedSoundCanBeDisabledWithoutChangingNormalValueRules()
+	{
+		org.junit.Assert.assertTrue(new CelebrationConfig() {}.highlightedItemSound());
+		when(events.config.highlightedItemSound()).thenReturn(false);
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Test item");
+		when(events.itemManager.getItemComposition(1)).thenReturn(item);
+		events.onLootReceived(new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 1)), 1, null), id -> false);
+		verifyNoInteractions(events.soundQueue);
+	}
+
 }

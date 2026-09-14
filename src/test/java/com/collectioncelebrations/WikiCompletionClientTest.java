@@ -94,4 +94,22 @@ public class WikiCompletionClientTest
 		client.fetch();
 	}
 
+	@Test
+	public void unnamedWikiPlaceholdersDoNotDiscardBrokenAntler()
+	{
+		com.google.gson.JsonObject data = new com.google.gson.JsonObject();
+		com.google.gson.JsonObject placeholder = new com.google.gson.JsonObject();
+		placeholder.add("name", com.google.gson.JsonNull.INSTANCE);
+		placeholder.addProperty("comp", 64.9);
+		data.add("29472", placeholder);
+		com.google.gson.JsonObject antler = new com.google.gson.JsonObject();
+		antler.addProperty("name", "Broken antler");
+		antler.addProperty("comp", 7.7);
+		data.add("31086", antler);
+		java.util.Map<Integer, WikiRarity.Entry> parsed = WikiRarity.parse(data);
+		org.junit.Assert.assertEquals(1, parsed.size());
+		org.junit.Assert.assertEquals("Broken antler", parsed.get(31086).name);
+		org.junit.Assert.assertEquals(Double.valueOf(7.7), parsed.get(31086).completion);
+	}
+
 }

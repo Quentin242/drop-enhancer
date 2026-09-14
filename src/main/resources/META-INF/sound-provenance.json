@@ -3,20 +3,18 @@
   "files": [
     {
       "file": "custom-sounds-common.wav",
-      "author": "daanbom / Custom Sounds",
-      "source": "https://github.com/daanbom/Custom-Drop-Sounds/blob/79ac9623a302d447be2d142f44a091b1cdd62185/src/main/resources/low_sound.wav",
-      "sourceSha256": "1785c4d2f011b4ebc9b917fa9043b5abc52a61784c358687ce2ff25537d27ade",
-      "sha256": "1785c4d2f011b4ebc9b917fa9043b5abc52a61784c358687ce2ff25537d27ade",
-      "durationSeconds": 1.5196145124716554,
-      "changes": "Renamed only; audio unchanged.",
-      "permission": "Custom Sounds author permission for use in Drop Enhancer reported by maiz on 2026-09-14."
+      "source": "Original procedural synthesis; scripts/generate-soft-sounds.py. No input recordings or samples.",
+      "sha256": "6047af7db3e0c3c6527666db2a53f8e88c4343d70f078dc95053a7b787db4fa0",
+      "durationSeconds": 1.18,
+      "changes": "Stereo 44.1 kHz 16-bit PCM; clearer 2-note brass fanfare with rounded attack and added upper harmonics.",
+      "license": "BSD-2-Clause; see LICENSE."
     },
     {
       "file": "drop-enhancer-uncommon.wav",
-      "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
-      "sha256": "a221ada37961d4ea3084f39e3234ca46316c17e4015b17f3248b945defe2c56c",
-      "durationSeconds": 2.25,
-      "changes": "Stereo 44.1 kHz 16-bit PCM; original oscillator arrangement with brighter harmonics, reduced low-frequency emphasis and lighter stereo delay. Melody and duration unchanged.",
+      "source": "Original procedural synthesis; scripts/generate-soft-sounds.py. No input recordings or samples.",
+      "sha256": "373c79f6bc4fb249c67b66193a01e005b52df7efe365907011474dba1b79091e",
+      "durationSeconds": 1.42,
+      "changes": "Stereo 44.1 kHz 16-bit PCM; Common-register brass: 160 ms pickup, 65 ms rest, 130 ms short note directly joined to a 0.95-second held ending with a short 60 ms fade-out.",
       "license": "BSD-2-Clause; see LICENSE."
     },
     {
@@ -51,10 +49,10 @@
     },
     {
       "file": "drop-enhancer-pet.wav",
-      "source": "Original procedural synthesis for Drop Enhancer; no input recordings, samples or existing melody.",
-      "sha256": "b257ec25795ba528f3056ebde1000a1117f0bd77d1d88884116cf5bc5c25ec0a",
+      "source": "Original procedural synthesis; scripts/generate-soft-sounds.py. No input recordings or samples.",
+      "sha256": "691661037c49a5f29449209323471a42532cf636d4b86cde3d1577d702e29f8d",
       "durationSeconds": 4.6,
-      "changes": "Stereo 44.1 kHz 16-bit PCM; original oscillator arrangement with brighter harmonics, reduced low-frequency emphasis and lighter stereo delay. Melody and duration unchanged.",
+      "changes": "Stereo 44.1 kHz 16-bit PCM; slow vowel-formant choir swell with soprano voices, lighter bass and clearer upper formants, no chimes.",
       "license": "BSD-2-Clause; see LICENSE."
     }
   ]

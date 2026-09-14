@@ -367,7 +367,7 @@ public class CelebrationPlugin extends Plugin
 			{
 				target = new Celebration(name, id, stack.getValue(), e.getName(), false, rewardSequence, now, gate.delayMillis());
 				boolean knownOwned = ledger.obtained(id) || knownLoggedNames.contains(name.toLowerCase(Locale.ROOT));
-				boolean collectionType = wiki.entry(id, name) != null;
+				boolean collectionType = ledger.get(id) != null || wiki.entry(id, name) != null;
 				target.extraItem = !knownOwned && !collectionType && ledger.get(id) == null;
 				if (popupIncluded(name, stack.getValue()) || (config.repeatDrops() && (knownOwned || collectionType)))
 				{
@@ -482,7 +482,8 @@ public class CelebrationPlugin extends Plugin
 
 	private boolean popupIncluded(String name, int quantity)
 	{
-		return name != null && GroundItemSoundFilter.match(config.includedPopupItems(), name, quantity) > 0;
+		return name != null && (GroundItemSoundFilter.match(config.includedPopupItems(), name, quantity) > 0 ||
+			(config.highlightPopup() && custom.highlighted(name, quantity)));
 	}
 
 	private boolean popupExcluded(Celebration c)
@@ -513,22 +514,12 @@ public class CelebrationPlugin extends Plugin
 			{
 				return;
 			}
-			if (selection == null || selection == PreviewSelection.OFF)
-			{
-				previews.clear();
-				overlay.clearPreview();
-				sounds.cancelPreview();
-			}
-			else
-			{
-				appendPreview(selection.tier, kind);
-			}
+			updatePreview(selection, kind);
 		});
 	}
 
-	void updatePreview()
+	void updatePreview(PreviewSelection selection, PreviewKind kind)
 	{
-		PreviewSelection selection = config.previewSelection();
 		if (selection == null || selection == PreviewSelection.OFF)
 		{
 			previews.clear();
@@ -537,7 +528,7 @@ public class CelebrationPlugin extends Plugin
 		}
 		else
 		{
-			appendPreview(selection.tier);
+			appendPreview(selection.tier, kind);
 		}
 	}
 	void queuePreview(PreviewTier tier)
@@ -734,6 +725,11 @@ public class CelebrationPlugin extends Plugin
 					{
 						String sound = TierStyle.file(c.tier, config);
 						int volume = TierStyle.volume(c.tier, config);
+						if (c.previewTier == null && config.highlightedItemSound() && custom.highlighted(c.name, c.dropQuantity))
+						{
+							sound = custom.highlightedRewardFile(c.itemId, c.dropQuantity, c.tier);
+							volume = custom.highlightedRewardVolume(c.itemId, c.dropQuantity, c.tier);
+						}
 						int unlockVolume = c.newSlot ? unlockVolume(c.tier) : 0;
 						if (c.previewTier != null)
 						{

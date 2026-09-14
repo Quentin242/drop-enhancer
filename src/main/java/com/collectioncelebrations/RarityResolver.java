@@ -70,16 +70,6 @@ public class RarityResolver
 	}
 
 	/**
-	 * @return the collection log tab name(s) (i.e. boss/activity source(s)) that can drop {@code
-	 *         itemName}, per the wiki dataset - empty if {@code itemName} isn't a known collection log
-	 *         item or has no tab data.
-	 */
-	public List<String> tabsForItemName(String itemName)
-	{
-		return completionData.tabsByItemName.getOrDefault(itemName, List.of());
-	}
-
-	/**
 	 * @param tier which non-null tier to pick from
 	 * @return a random item id matching {@code tier}, or {@code null} if none is available.
 	 *         {@link PreviewTier#PET} draws from the pet name index, since pets never enter
@@ -425,7 +415,6 @@ public class RarityResolver
 		private final Map<Integer, CompletionEntry> byId;
 		private final List<Integer> ids;
 		private final Map<String, Integer> petIdByName;
-		private final Map<String, List<String>> tabsByItemName;
 		private final Map<String, Integer> idByItemName;
 
 		private CompletionData(Map<String, CompletionEntry> raw)
@@ -444,7 +433,6 @@ public class RarityResolver
 						   .collect(Collectors.toList());
 
 			Map<String, Integer> pets = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-			Map<String, List<String>> tabs = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 			Map<String, Integer> idsByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 			// parsed is a TreeMap keyed by id, so putIfAbsent keeps the lowest id for names shared by
 			// several variants (see datasetIdForName).
@@ -467,14 +455,9 @@ public class RarityResolver
 					{
 						pets.put(name, id);
 					}
-					if (entry.tabs != null)
-					{
-						tabs.put(name, entry.tabs);
-					}
 				}
 			});
 			this.petIdByName = Collections.unmodifiableMap(pets);
-			this.tabsByItemName = Collections.unmodifiableMap(tabs);
 			this.idByItemName = Collections.unmodifiableMap(idsByName);
 		}
 	}

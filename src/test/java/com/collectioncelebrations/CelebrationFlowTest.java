@@ -227,9 +227,11 @@ public class CelebrationFlowTest
 		sync(0);
 		clearInvocations(p.overlay);
 		loot();
-		p.time += 2000;
-		p.onBeforeRender(new BeforeRender());
-		verify(p.overlay, never()).show(any(), anyLong());
+		Celebration c = release();
+		assertEquals(Integer.valueOf(0), c.lastSyncedTotal);
+		assertEquals(0, c.provisionalTotal);
+		assertNull(c.confirmedTotal);
+		assertFalse(c.newSlot);
 	}
 
 	@Test
@@ -330,9 +332,9 @@ public class CelebrationFlowTest
 		sync(1);
 		loot();
 		when(p.config.previewSelection()).thenReturn(PreviewSelection.RARE);
-		p.updatePreview();
+		p.updatePreview(p.config.previewSelection(), p.config.previewKind());
 		when(p.config.previewSelection()).thenReturn(PreviewSelection.OFF);
-		p.updatePreview();
+		p.updatePreview(p.config.previewSelection(), p.config.previewKind());
 		assertNull(release().previewTier);
 		clearInvocations(p.overlay);
 		p.onBeforeRender(new BeforeRender());
@@ -342,10 +344,10 @@ public class CelebrationFlowTest
 	public void nativePreviewChangeUsesNewestTierAndUnlockKind()
 	{
 		when(p.config.previewSelection()).thenReturn(PreviewSelection.COMMON);
-		p.updatePreview();
+		p.updatePreview(p.config.previewSelection(), p.config.previewKind());
 		when(p.config.previewSelection()).thenReturn(PreviewSelection.PET);
 		when(p.config.previewKind()).thenReturn(PreviewKind.REPEAT_DROP);
-		p.updatePreview();
+		p.updatePreview(p.config.previewSelection(), p.config.previewKind());
 		Celebration c = release();
 		assertSame(PreviewTier.PET, c.previewTier);
 		assertFalse(c.newSlot);
@@ -806,6 +808,78 @@ public class CelebrationFlowTest
 		when(p.items.getItemComposition(101).isTradeable()).thenReturn(false);
 		when(p.items.getItemComposition(102).isTradeable()).thenReturn(false);
 		assertReleaseOrder("First untradeable", "Later untradeable");
+	}
+
+	@Test
+	public void synchronizedZeroSlotStillRecognizesRepeatWithoutWiki()
+	{
+		sync(0);
+		loot();
+		Celebration c = release();
+		assertFalse(c.newSlot);
+		assertFalse(c.extraItem);
+		assertEquals(Integer.valueOf(0), c.lastSyncedTotal);
+		assertNull(c.confirmedTotal);
+	}
+
+	@Test
+	public void brokenAntlerHighlightedRepeatKeepsPopupAndUsesSharedMediumSound()
+	{
+		int antler = 31086;
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Broken antler");
+		when(p.items.canonicalize(antler)).thenReturn(antler);
+		when(p.items.getItemComposition(antler)).thenReturn(item);
+		when(p.wiki.entry(antler, "Broken antler")).thenReturn(
+			new WikiRarity.Entry(antler, "Broken antler", 7.7, false, List.of("Slayer")));
+		when(p.custom.highlighted("Broken antler", 1)).thenReturn(true);
+		when(p.custom.highlightedRewardFile(eq(antler), eq(1), any())).thenReturn("uncommon.wav");
+		when(p.custom.highlightedRewardVolume(eq(antler), eq(1), any())).thenReturn(70);
+		p.onLootReceived(new LootReceived("Mature custodian stalker", 1, LootRecordType.NPC,
+			List.of(new ItemStack(antler, 1)), 1, null));
+		Celebration c = release();
+		assertEquals("Broken antler", c.name);
+		assertFalse(c.newSlot);
+		assertFalse(c.extraItem);
+		assertNull(c.confirmedTotal);
+		verify(p.sounds).playNow("uncommon.wav", 70);
+	}
+
+	@Test
+	public void highlightPopupIsOptInAndWorksWithoutCollectionData()
+	{
+		assertFalse(new CelebrationConfig() {}.highlightPopup());
+		when(p.custom.highlighted(NAME, 1)).thenReturn(true);
+		loot();
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		when(p.config.highlightPopup()).thenReturn(true);
+		when(p.config.repeatDrops()).thenReturn(false);
+		loot();
+		Celebration c = release();
+		assertTrue(c.extraItem);
+		assertFalse(c.newSlot);
+		assertNull(c.confirmedTotal);
+	}
+
+	@Test
+	public void highlightedPopupStillHonoursExclusionsAndQueueRecheck()
+	{
+		when(p.config.highlightPopup()).thenReturn(true);
+		when(p.custom.highlighted(NAME, 1)).thenReturn(true);
+		when(p.config.excludedPopupItems()).thenReturn(NAME);
+		loot();
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		verify(p.sounds, never()).playNow(anyString(), anyInt());
+		when(p.config.excludedPopupItems()).thenReturn("");
+		loot();
+		when(p.config.highlightPopup()).thenReturn(false);
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
 	}
 
 }

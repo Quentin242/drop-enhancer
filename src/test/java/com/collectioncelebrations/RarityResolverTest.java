@@ -117,10 +117,9 @@ public class RarityResolverTest
 	{
 		assertEquals(RarityTier.PET, resolver.resolve(-1, "Gull").getTier());
 		assertEquals(Integer.valueOf(31285), resolver.datasetIdForName("Gull"));
-		assertEquals(List.of("Shellbane Gryphon", "All Pets"), resolver.tabsForItemName("Gull"));
 	}
 
-	// The suffixed name still resolves - it's what ::clogtest and the dataset itself use.
+	// The suffixed name still resolves - it is the name in the dataset.
 	@Test
 	public void petSuffixedDatasetNameStillResolvesUnderItsFullName()
 	{
