@@ -281,11 +281,7 @@ class CelebrationOverlay extends Overlay
 				g.drawOval(cx - radius + l.p(5), cy - radius + l.p(5), radius * 2 - l.p(10), radius * 2 - l.p(10));
 				if (icon != null)
 				{
-					double spriteScale = l.scale * 58 * pop / Math.max(icon.getWidth(), icon.getHeight());
-					int iw = (int)Math.round(icon.getWidth() * spriteScale), ih = (int)Math.round(icon.getHeight() * spriteScale);
-					// Match Enhanced: crisp game pixel art, independently scaled from the text.
-					g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-					g.drawImage(icon, cx - iw / 2, cy - ih / 2, iw, ih, null);
+					drawItemIcon(g, icon, cx, cy, l.scale * 64 * pop, Math.max(1, radius - l.p(7) - 1));
 				}
 				else
 				{
@@ -299,6 +295,49 @@ class CelebrationOverlay extends Overlay
 			g.dispose();
 		}
 	}
+	static void drawItemIcon(Graphics2D g, BufferedImage icon, int cx, int cy, double maxSize, double safeRadius)
+	{
+		int left = icon.getWidth(), top = icon.getHeight(), right = -1, bottom = -1;
+		for (int y = 0; y < icon.getHeight(); y++)
+		{
+			for (int x = 0; x < icon.getWidth(); x++)
+			{
+				if ((icon.getRGB(x, y) >>> 24) != 0)
+				{
+					left = Math.min(left, x);
+					top = Math.min(top, y);
+					right = Math.max(right, x);
+					bottom = Math.max(bottom, y);
+				}
+			}
+		}
+		if (right < left)
+		{
+			return;
+		}
+		int width = right - left + 1, height = bottom - top + 1;
+		double centerX = (left + right + 1) / 2.0, centerY = (top + bottom + 1) / 2.0;
+		double extent = 0;
+		for (int y = top; y <= bottom; y++)
+		{
+			for (int x = left; x <= right; x++)
+			{
+				if ((icon.getRGB(x, y) >>> 24) != 0)
+				{
+					// Include pixel corners so diagonal tips also fit inside the ring.
+					extent = Math.max(extent, Math.hypot(Math.abs(x + .5 - centerX) + .5, Math.abs(y + .5 - centerY) + .5));
+				}
+			}
+		}
+		double scale = Math.min(maxSize / Math.max(width, height), Math.max(0, safeRadius - 1) / extent);
+		int drawWidth = Math.max(1, (int)Math.floor(width * scale));
+		int drawHeight = Math.max(1, (int)Math.floor(height * scale));
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		g.drawImage(icon, cx - drawWidth / 2, cy - drawHeight / 2,
+			cx - drawWidth / 2 + drawWidth, cy - drawHeight / 2 + drawHeight,
+			left, top, right + 1, bottom + 1, null);
+	}
+
 	private static Shape frame(Layout l, int inset)
 	{
 		Path2D p = new Path2D.Double();

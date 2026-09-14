@@ -185,4 +185,71 @@ public class PopupImageTest
 		java.awt.Color banner = new java.awt.Color(image.getRGB(300, 24), true);
 		assertTrue("Visible gold ribbon inside the screen", banner.getRed() > banner.getBlue() + 30);
 	}
+	@Test
+	public void transparentPaddingDoesNotShiftOrShrinkVisibleItem()
+	{
+		BufferedImage padded = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D source = padded.createGraphics();
+		source.setColor(java.awt.Color.WHITE);
+		source.fillRect(1, 3, 10, 20);
+		source.dispose();
+		BufferedImage cropped = padded.getSubimage(1, 3, 10, 20);
+		BufferedImage first = drawIcon(padded, 64, 32);
+		BufferedImage second = drawIcon(cropped, 64, 32);
+		assertArrayEquals(first.getRGB(0, 0, 100, 100, null, 0, 100), second.getRGB(0, 0, 100, 100, null, 0, 100));
+		assertNotEquals(0, first.getRGB(50, 25) >>> 24);
+		assertNotEquals(0, first.getRGB(50, 75) >>> 24);
+	}
+
+	@Test
+	public void squareAndDiagonalSpritesFitWithoutClippingAtMultipleSizes()
+	{
+		for (boolean diagonal : new boolean[] {false, true})
+		{
+			BufferedImage icon = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
+			for (int y = 0; y < 32; y++)
+			{
+				for (int x = 0; x < 36; x++)
+				{
+					if (!diagonal || Math.abs(x - y) <= 2)
+					{
+						icon.setRGB(x, y, java.awt.Color.WHITE.getRGB());
+					}
+				}
+			}
+			for (int radius : new int[] {8, 16, 24, 32, 40})
+			{
+				BufferedImage rendered = drawIcon(icon, radius * 2, radius);
+				int visible = 0;
+				for (int y = 0; y < 100; y++)
+				{
+					for (int x = 0; x < 100; x++)
+					{
+						if ((rendered.getRGB(x, y) >>> 24) != 0)
+						{
+							visible++;
+							assertTrue("Sprite pixel outside ring", Math.hypot(x - 50, y - 50) <= radius);
+						}
+					}
+				}
+				assertTrue(visible > 0);
+			}
+		}
+	}
+
+	private BufferedImage drawIcon(BufferedImage icon, double maxSize, double radius)
+	{
+		BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		try
+		{
+			CelebrationOverlay.drawItemIcon(g, icon, 50, 50, maxSize, radius);
+		}
+		finally
+		{
+			g.dispose();
+		}
+		return image;
+	}
+
 }
