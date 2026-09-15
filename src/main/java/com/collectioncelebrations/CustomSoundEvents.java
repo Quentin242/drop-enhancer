@@ -190,7 +190,7 @@ public class CustomSoundEvents
 		{
 			playValueSound(HIGH_SOUND_FILE, name);
 		}
-		if (config.highestValueSound() && value >= config.highestStart() && value < config.highestEnd())
+		if (config.highestValueSound() && value >= config.highestStart())
 		{
 			playValueSound(HIGHEST_SOUND_FILE, name);
 		}
@@ -251,7 +251,7 @@ public class CustomSoundEvents
 	private String highlightedValueFile(int value)
 	{
 		boolean ground = config.dropValueMode() == DropValueMode.GROUND_ITEMS;
-		if (ground ? value > groundItemsConfig.insaneValuePrice() : value >= config.highestStart() && value < config.highestEnd())
+		if (ground ? value > groundItemsConfig.insaneValuePrice() : value >= config.highestStart())
 		{
 			return HIGHEST_SOUND_FILE;
 		}

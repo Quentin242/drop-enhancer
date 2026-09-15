@@ -284,18 +284,11 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "highestStart", name = "Highest Value starting GP (own mode)",
-				description = "Inclusive start in independent price modes. Ignored when following Ground Items.", position = 22,
+				description = "Inclusive start with no upper limit in independent price modes. Ignored when following Ground Items.", position = 22,
 				section = valueDrops)
 	default int highestStart()
 	{
 		return 10000000;
-	}
-	@ConfigItem(keyName = "highestEnd", name = "Highest Value ending GP (own mode)",
-				description = "Exclusive end in independent price modes. Ignored when following Ground Items.", position = 23,
-				section = valueDrops)
-	default int highestEnd()
-	{
-		return 1000000000;
 	}
 
 	@Range(min = 60, max = 200)

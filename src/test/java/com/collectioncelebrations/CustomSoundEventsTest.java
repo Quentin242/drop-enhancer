@@ -36,6 +36,26 @@ public class CustomSoundEventsTest
 	}
 
 	@Test
+	public void highestOwnTierHasNoUpperLimit()
+	{
+		when(events.config.dropValueMode()).thenReturn(DropValueMode.GE);
+		when(events.config.highestValueSound()).thenReturn(true);
+		ItemComposition item = mock(ItemComposition.class);
+		when(item.getName()).thenReturn("Value test");
+		when(events.itemManager.getItemComposition(1)).thenReturn(item);
+		LootReceived loot = new LootReceived("Test", 1, LootRecordType.NPC, List.of(new ItemStack(1, 2)), 1, null);
+		for (int price : new int[]{5000000, 500000000, Integer.MAX_VALUE})
+		{
+			clearInvocations(events.soundQueue);
+			when(events.itemManager.getItemPrice(1)).thenReturn(price);
+			events.onLootReceived(loot, id -> false);
+			verify(events.soundQueue).offerValue("custom-sounds-veryrare.wav", 50, "value test");
+			verifyNoMoreInteractions(events.soundQueue);
+			org.junit.Assert.assertEquals("custom-sounds-veryrare.wav", events.highlightedRewardFile(1, 2, null));
+		}
+	}
+
+	@Test
 	public void shutdownWithImmutableHighlightListAndRestartWorks()
 	{
 		events.shutDown();
