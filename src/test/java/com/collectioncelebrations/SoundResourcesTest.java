@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.UnsupportedAudioFileException;
+import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import javax.sound.sampled.AudioSystem;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -26,7 +28,7 @@ public class SoundResourcesTest
 			config.unlockFile()};
 		for (String name : names)
 		{
-			try (AudioInputStream stream = SoundResources.open(new File(temporary.getRoot(), name)))
+			try (AudioInputStream stream = decode(new File(temporary.getRoot(), name)))
 			{
 				assertTrue(name, stream.getFrameLength() > 0);
 				assertTrue(name, stream.getFormat().getSampleRate() > 0);
@@ -43,33 +45,33 @@ public class SoundResourcesTest
 		{
 			Files.copy(source, override.toPath());
 		}
-		try (AudioInputStream local = SoundResources.open(override);
-			 AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
+		try (AudioInputStream local = decode(override);
+			 AudioInputStream pet = decode(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
 		{
 			assertEquals(pet.getFrameLength(), local.getFrameLength());
 		}
 	}
 
-	@Test(expected = UnsupportedAudioFileException.class)
+	@Test(expected = IOException.class)
 	public void invalidLocalOverrideDoesNotUnexpectedlyPlayDefault() throws Exception
 	{
 		File override = temporary.newFile("botssouls-common.wav");
 		Files.writeString(override.toPath(), "invalid WAV");
-		SoundResources.open(override);
+		decode(override);
 	}
 
 	@Test(expected = FileNotFoundException.class)
 	public void unknownCustomNameHasNoFallback() throws Exception
 	{
-		SoundResources.open(new File(temporary.getRoot(), "missing-custom.wav"));
+		decode(new File(temporary.getRoot(), "missing-custom.wav"));
 	}
 	@Test
 	public void savedLegacyDefaultsDecodeTheNewRecordings() throws Exception
 	{
 		for (String tier : new String[] {"common", "uncommon", "rare", "veryrare", "unlock", "pet"})
 		{
-			try (AudioInputStream legacy = SoundResources.open(new File(temporary.getRoot(), "botssouls-" + tier + ".wav"));
-				AudioInputStream current = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav")))
+			try (AudioInputStream legacy = decode(new File(temporary.getRoot(), "botssouls-" + tier + ".wav"));
+				AudioInputStream current = decode(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav")))
 			{
 				assertEquals(current.getFormat().toString(), legacy.getFormat().toString());
 				org.junit.Assert.assertArrayEquals(current.readAllBytes(), legacy.readAllBytes());
@@ -85,8 +87,8 @@ public class SoundResourcesTest
 		{
 			Files.copy(source, override.toPath());
 		}
-		try (AudioInputStream local = SoundResources.open(override);
-			AudioInputStream pet = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
+		try (AudioInputStream local = decode(override);
+			AudioInputStream pet = decode(new File(temporary.getRoot(), "drop-enhancer-pet.wav")))
 		{
 			org.junit.Assert.assertArrayEquals(pet.readAllBytes(), local.readAllBytes());
 		}
@@ -97,12 +99,19 @@ public class SoundResourcesTest
 	{
 		for (String tier : new String[] {"uncommon", "pet"})
 		{
-			try (AudioInputStream legacy = SoundResources.open(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav"));
-				AudioInputStream current = SoundResources.open(new File(temporary.getRoot(), "drop-enhancer-" + tier + ".wav")))
+			try (AudioInputStream legacy = decode(new File(temporary.getRoot(), "custom-sounds-" + tier + ".wav"));
+				AudioInputStream current = decode(new File(temporary.getRoot(), "drop-enhancer-" + tier + ".wav")))
 			{
 				org.junit.Assert.assertArrayEquals(current.readAllBytes(), legacy.readAllBytes());
 			}
 		}
+	}
+
+	private AudioInputStream decode(File file) throws Exception
+	{
+		WavData wav = SoundResources.load(file);
+		assertTrue(wav.durationMillis > 0);
+		return AudioSystem.getAudioInputStream(new ByteArrayInputStream(wav.bytes));
 	}
 
 }

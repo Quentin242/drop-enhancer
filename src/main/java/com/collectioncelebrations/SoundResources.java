@@ -1,15 +1,12 @@
 /* Copyright (c) 2026 maiz. BSD-2-Clause; see LICENSE. */
 package com.collectioncelebrations;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
+import java.nio.file.Files;
 
 /** Local overrides take precedence; defaults are read directly from the plugin JAR. */
 final class SoundResources
@@ -28,11 +25,14 @@ final class SoundResources
 	{
 	}
 
-	static AudioInputStream open(File local) throws IOException, UnsupportedAudioFileException
+	static WavData load(File local) throws IOException
 	{
 		if (local.exists())
 		{
-			return AudioSystem.getAudioInputStream(local);
+			try (InputStream input = Files.newInputStream(local.toPath()))
+			{
+				return WavData.read(input);
+			}
 		}
 		String name = LEGACY_DEFAULTS.getOrDefault(local.getName(), local.getName());
 		InputStream resource = SoundQueue.validName(name) ? SoundResources.class.getResourceAsStream("/sounds/" + name) : null;
@@ -40,15 +40,9 @@ final class SoundResources
 		{
 			throw new FileNotFoundException("Sound is not installed: " + name);
 		}
-		BufferedInputStream buffered = new BufferedInputStream(resource);
-		try
+		try (InputStream input = resource)
 		{
-			return AudioSystem.getAudioInputStream(buffered);
-		}
-		catch (IOException | UnsupportedAudioFileException | RuntimeException failure)
-		{
-			buffered.close();
-			throw failure;
+			return WavData.read(input);
 		}
 	}
 }

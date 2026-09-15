@@ -51,7 +51,7 @@ import net.runelite.client.util.Text;
 import net.runelite.api.widgets.Widget;
 
 @PluginDescriptor(name = "Drop Enhancer", description = "Collection log, repeat drop popups and custom sounds",
-				  conflicts = {"Collection Log Popup Enhanced", "Custom Sounds"}, enabledByDefault = false)
+				  conflicts = {"Collection Log Popup Enhanced", "Custom Sounds"})
 @PluginDependency(GroundItemsPlugin.class)
 @PluginDependency(LootTrackerPlugin.class)
 public class CelebrationPlugin extends Plugin

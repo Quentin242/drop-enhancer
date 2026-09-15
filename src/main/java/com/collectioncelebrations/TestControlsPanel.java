@@ -39,7 +39,7 @@ final class TestControlsPanel extends PluginPanel
 			button.addActionListener(e -> action.accept(label, (PreviewTier)tier.getSelectedItem()));
 			controls.add(button);
 		}
-		JLabel note = new JLabel("<html>Log in to test.<br>Highest rarity goes first.<br>New unlock/drop: plugin cog → Test popup.</html>");
+		JLabel note = new JLabel("<html>Log in to test.<br>Highest rarity goes first.<br>Stop clears queued previews; playing audio finishes.<br>New unlock/drop: plugin cog → Test popup.</html>");
 		note.setForeground(Color.LIGHT_GRAY);
 		controls.add(note);
 		JLabel soundsLabel = new JLabel("Sound file");

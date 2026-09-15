@@ -5,8 +5,7 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import javax.sound.sampled.AudioFileFormat;
-import javax.sound.sampled.AudioSystem;
+import java.io.InputStream;
 
 final class LocalSoundFiles
 {
@@ -16,9 +15,9 @@ final class LocalSoundFiles
 		{
 			throw new IOException("Select a WAV smaller than 32 MB");
 		}
-		if (!AudioFileFormat.Type.WAVE.equals(AudioSystem.getAudioFileFormat(source.toFile()).getType()))
+		try (InputStream input = Files.newInputStream(source))
 		{
-			throw new IOException("File is not WAV audio");
+			WavData.read(input);
 		}
 		Files.createDirectories(folder);
 		String name = source.getFileName().toString();

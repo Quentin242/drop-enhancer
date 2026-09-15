@@ -1,15 +1,19 @@
 /* Copyright (c) 2026 maiz. BSD-2-Clause; see LICENSE. */
 package com.collectioncelebrations;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.client.RuneLite;
+import net.runelite.client.audio.AudioPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,92 +25,34 @@ class SoundQueue
 	CelebrationConfig config;
 	@Inject
 	CaseGate gate;
+	@Inject
+	AudioPlayer audioPlayer;
 	private final List<Request> waiting = new ArrayList<>();
+	private final List<Long> playingUntil = new CopyOnWriteArrayList<>();
 	private ExecutorService worker;
 	private volatile int generation;
 	private volatile int previewGeneration;
-	// Each worker owns its clips, including cleanup after a quick disable/re-enable.
-	private static final class AudioPlayback
-	{
-		final List<javax.sound.sampled.Clip> clips = new java.util.concurrent.CopyOnWriteArrayList<>();
-		final java.util.Map<javax.sound.sampled.Clip, Long> deadlines = new java.util.concurrent.ConcurrentHashMap<>();
-		void close()
-		{
-			for (javax.sound.sampled.Clip clip : clips)
-			{
-				closeClip(clip);
-			}
-			clips.clear();
-			deadlines.clear();
-		}
-	}
-	private static void closeClip(javax.sound.sampled.Clip clip)
-	{
-		try
-		{
-			clip.stop();
-		}
-		catch (RuntimeException e)
-		{
-			log.debug("Unable to stop audio clip", e);
-		}
-		try
-		{
-			clip.close();
-		}
-		catch (RuntimeException e)
-		{
-			log.debug("Unable to close audio clip", e);
-		}
-	}
-
-	private AudioPlayback preview;
-	private AudioPlayback rewards;
 	private volatile long openingSince;
+	private AtomicInteger pendingAudio = new AtomicInteger();
+
 	long monotonicMillis()
 	{
 		return System.nanoTime() / 1000000;
 	}
-	private java.util.concurrent.atomic.AtomicInteger pendingAudio = new java.util.concurrent.atomic.AtomicInteger();
+
 	boolean busy()
 	{
 		if (worker != null && pendingAudio.get() > 0 && monotonicMillis() - openingSince > 5000)
 		{
-			// A blocked audio driver must not freeze visual notifications or accumulate new work.
 			generation++;
 			previewGeneration++;
 			worker.shutdownNow();
 			worker = null;
 			log.debug("Audio device did not respond; audio suspended until plugin restart");
 		}
-		return worker != null && (pendingAudio.get() > 0 || playing(preview) || playing(rewards));
-	}
-	private boolean playing(AudioPlayback playback)
-	{
-		if (playback == null)
-		{
-			return false;
-		}
-		boolean active = false;
-		for (javax.sound.sampled.Clip clip : playback.clips)
-		{
-			long deadline = playback.deadlines.getOrDefault(clip, Long.MAX_VALUE);
-			// start() can return before the driver sets isRunning(). An unfinished
-			// frame position keeps that clip alive, bounded by the WAV deadline.
-			if (monotonicMillis() < deadline && (clip.isRunning() || clip.getLongFramePosition() < clip.getFrameLength()))
-			{
-				active = true;
-			}
-			else if (playback.clips.remove(clip))
-			{
-				playback.deadlines.remove(clip);
-				if (worker != null)
-				{
-					worker.execute(() -> closeClip(clip));
-				}
-			}
-		}
-		return active;
+		long now = monotonicMillis();
+		playingUntil.removeIf(deadline -> now >= deadline);
+		return worker != null && (pendingAudio.get() > 0 || !playingUntil.isEmpty());
 	}
 	File runeliteDirectory = RuneLite.RUNELITE_DIR;
 	private static final class Request
@@ -126,32 +72,27 @@ class SoundQueue
 	}
 	void start()
 	{
-		pendingAudio = new java.util.concurrent.atomic.AtomicInteger();
-		preview = new AudioPlayback();
-		rewards = new AudioPlayback();
+		pendingAudio = new AtomicInteger();
 		worker = Executors.newSingleThreadExecutor(r -> {
 			Thread t = new Thread(r, "collection-celebrations-audio");
 			t.setDaemon(true);
 			return t;
 		});
 	}
+
 	void reset()
 	{
 		generation++;
 		waiting.clear();
 		cancelPreview();
-		if (worker != null)
-		{
-			AudioPlayback old = rewards;
-			worker.execute(old::close);
-		}
 	}
+
 	void stop()
 	{
 		reset();
 		if (worker != null)
 		{
-			worker.shutdown();
+			worker.shutdownNow();
 			worker = null;
 		}
 	}
@@ -211,40 +152,39 @@ class SoundQueue
 	}
 	void cancelPreview()
 	{
+		// AudioPlayer owns started audio and exposes no stop handle. Cancel pending work only.
 		previewGeneration++;
-		if (worker != null)
-		{
-			AudioPlayback playback = preview;
-			worker.execute(playback::close);
-		}
 	}
-	javax.sound.sampled.Clip openClip(File file) throws Exception
+
+	WavData load(File file) throws Exception
 	{
-		javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
-		try (javax.sound.sampled.AudioInputStream input = SoundResources.open(file))
-		{
-			clip.open(input);
-			return clip;
-		}
-		catch (Exception e)
-		{
-			clip.close();
-			throw e;
-		}
+		return SoundResources.load(file);
 	}
+
 	void playPreview(String name, int volume)
 	{
 		playPreview(name, volume, null, 0);
 	}
+
 	void playPreview(String name, int volume, String unlockName, int unlockVolume)
 	{
-		if (worker == null)
+		submit(name, volume, unlockName, unlockVolume, true);
+	}
+
+	void playNow(String name, int volume)
+	{
+		submit(name, volume, null, 0, false);
+	}
+
+	private void submit(String name, int volume, String layer, int layerVolume, boolean preview)
+	{
+		if (worker == null || ((volume <= 0 || !validName(name)) && (layerVolume <= 0 || !validName(layer))))
 		{
 			return;
 		}
+		int session = generation;
 		int token = previewGeneration;
-		AudioPlayback playback = preview;
-		java.util.concurrent.atomic.AtomicInteger counter = pendingAudio;
+		AtomicInteger counter = pendingAudio;
 		if (counter.getAndIncrement() == 0)
 		{
 			openingSince = monotonicMillis();
@@ -252,13 +192,8 @@ class SoundQueue
 		worker.execute(() -> {
 			try
 			{
-				if (token != previewGeneration)
-				{
-					return;
-				}
-				playback.close();
-				openLayer(playback, name, volume, token, true);
-				openLayer(playback, unlockName, unlockVolume, token, true);
+				playLayer(name, volume, session, token, preview);
+				playLayer(layer, layerVolume, session, token, preview);
 			}
 			finally
 			{
@@ -266,76 +201,31 @@ class SoundQueue
 			}
 		});
 	}
-	private void openLayer(AudioPlayback playback, String name, int volume, int token, boolean test)
+
+	private void playLayer(String name, int volume, int session, int token, boolean preview)
 	{
-		if (token != (test ? previewGeneration : generation) || volume <= 0 || !validName(name))
+		if (session != generation || (preview && token != previewGeneration) || volume <= 0 || !validName(name))
 		{
 			return;
 		}
 		try
 		{
-			javax.sound.sampled.Clip clip = openClip(file(name));
-			try
+			WavData wav = load(file(name));
+			if (session != generation || (preview && token != previewGeneration))
 			{
-				if (token != (test ? previewGeneration : generation))
-				{
-					clip.close();
-					return;
-				}
-				if (clip.isControlSupported(javax.sound.sampled.FloatControl.Type.MASTER_GAIN))
-				{
-					javax.sound.sampled.FloatControl gain =
-						(javax.sound.sampled.FloatControl)clip.getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN);
-					gain.setValue(
-						Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), 20f * (float)Math.log10(Math.min(100, volume) / 100f))));
-				}
-				long lengthMillis = Math.max(1, clip.getMicrosecondLength() / 1000);
-				// Device calls above may block while Stop/logout invalidates this request.
-				if (token != (test ? previewGeneration : generation))
-				{
-					closeClip(clip);
-					return;
-				}
-				playback.deadlines.put(clip, monotonicMillis() + lengthMillis + 250);
-				playback.clips.add(clip);
-				clip.start();
+				return;
 			}
-			catch (Exception e)
+			float gain = 20f * (float)Math.log10(Math.min(100, volume) / 100f);
+			try (ByteArrayInputStream input = new ByteArrayInputStream(wav.bytes))
 			{
-				playback.clips.remove(clip);
-				playback.deadlines.remove(clip);
-				closeClip(clip);
-				throw e;
+				audioPlayer.play(input, gain);
 			}
+			// AudioPlayer has no completion callback. Reserve the measured WAV duration.
+			playingUntil.add(monotonicMillis() + wav.durationMillis + 50);
 		}
-		catch (Exception e)
+		catch (Exception failure)
 		{
-			log.debug("Unable to play sound {}", name, e);
+			log.debug("Unable to play sound {}", name, failure);
 		}
-	}
-
-	void playNow(String name, int volume)
-	{
-		if (worker == null || volume <= 0 || !validName(name))
-		{
-			return;
-		}
-		int session = generation;
-		AudioPlayback playback = rewards;
-		java.util.concurrent.atomic.AtomicInteger counter = pendingAudio;
-		if (counter.getAndIncrement() == 0)
-		{
-			openingSince = monotonicMillis();
-		}
-		worker.execute(() -> {
-			try
-			{
-				openLayer(playback, name, volume, session, false);
-			}
-			finally
-			{
-				counter.decrementAndGet();
-			}
-		});
 	}
 }

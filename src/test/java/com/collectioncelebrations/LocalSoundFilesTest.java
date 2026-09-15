@@ -36,7 +36,7 @@ public class LocalSoundFilesTest
 			LocalSoundFiles.select(source, temp.getRoot().toPath().resolve("sounds"));
 			fail();
 		}
-		catch (UnsupportedAudioFileException expected)
+		catch (java.io.IOException expected)
 		{
 		}
 	}
