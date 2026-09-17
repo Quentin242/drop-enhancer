@@ -467,11 +467,14 @@ public class CelebrationFlowTest
 	@Test
 	public void allTierTestQueuesHighestFirstAndStopClearsRemainder()
 	{
-		p.testAction("Test all tiers", PreviewTier.COMMON);
+		for (PreviewTier tier : PreviewTier.values())
+		{
+			p.queuePreview(tier);
+		}
 		assertSame(PreviewTier.PET, release().previewTier);
 		clearInvocations(p.overlay);
 		assertSame(PreviewTier.VERY_RARE, release().previewTier);
-		p.testAction("Stop", PreviewTier.COMMON);
+		p.updatePreview(PreviewSelection.OFF, PreviewKind.NEW_UNLOCK);
 		clearInvocations(p.overlay);
 		p.onBeforeRender(new BeforeRender());
 		verify(p.overlay, never()).show(any(), anyLong());
@@ -479,7 +482,7 @@ public class CelebrationFlowTest
 	@Test
 	public void addToQueueDoesNotReplaceCurrentPreview()
 	{
-		p.testAction("Add to queue", PreviewTier.RARE);
+		p.queuePreview(PreviewTier.RARE);
 		verify(p.overlay, never()).clearPreview();
 		verify(p.sounds, never()).cancelPreview();
 		assertSame(PreviewTier.RARE, release().previewTier);

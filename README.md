@@ -5,9 +5,11 @@ Configurable drop popups and sounds for RuneLite.
 - Collection-log unlock and repeat-drop popups.
 - Rarity colours, collection statistics and configurable sounds.
 - Item inclusion/exclusion rules and Ground Items value-tier audio.
-- Custom WAV selection and popup previews.
+- Your own WAV per rarity tier, and popup previews from the settings.
 
 To receive new-unlock notifications, enable **Chat**, **Pop-up**, or **Both** for collection-log notifications in the OSRS settings. Drop Enhancer recognizes both notification forms and combines them into one unlock. Unrecognized popup text is left visible.
+
+To use your own sound, put the `.wav` in `.runelite/collection-celebrations/sounds/` and type the file name in the matching WAV setting. Uncompressed PCM only, up to 32 MB. Leave a setting blank to keep the bundled sound.
 
 Open the relevant pages of your own collection log to synchronize official quantities. These observations reset on logout or world hop. “Last synced” is a previous official quantity; “Temporary” is only whether an unlock has been observed, not a lifetime total. Optional **Refresh wiki completion data** loads public item definitions and population statistics when enabled, without restarting the plugin. It sends no player data and reuses a cache for up to one day. Wiki statistics do not establish your own collection quantities.
 

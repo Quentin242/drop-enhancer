@@ -57,10 +57,6 @@ import net.runelite.api.widgets.Widget;
 @PluginDependency(LootTrackerPlugin.class)
 public class CelebrationPlugin extends Plugin
 {
-	@Inject
-	net.runelite.client.ui.ClientToolbar toolbar;
-	private net.runelite.client.ui.NavigationButton testNavigation;
-
 	// collection_delayed_transmit; no named constant is exposed by RuneLite ScriptID.
 	private static final int COLLECTION_DELAYED_TRANSMIT = 4100;
 	private static final String UNLOCK = "New item added to your collection log: ";
@@ -129,53 +125,11 @@ public class CelebrationPlugin extends Plugin
 		overlays.add(overlay);
 		gate.refresh();
 		running = true;
-		if (config.sidePanel())
-		{
-			addSidePanel();
-		}
-	}
-
-	private void addSidePanel()
-	{
-		javax.swing.SwingUtilities.invokeLater(() -> {
-			if (!running || testNavigation != null)
-			{
-				return;
-			}
-			TestControlsPanel panel = new TestControlsPanel((action, tier)
-																-> clientThread.invokeLater(() -> {
-				if (running)
-				{
-					testAction(action, tier);
-				}
-			}),
-															configManager);
-			testNavigation = net.runelite.client.ui.NavigationButton.builder()
-								 .tooltip("Drop Enhancer")
-								 .icon(TestControlsPanel.icon())
-								 .panel(panel)
-								 .priority(8)
-								 .build();
-			toolbar.addNavigation(testNavigation);
-		});
-	}
-
-	private void removeSidePanel()
-	{
-		javax.swing.SwingUtilities.invokeLater(() -> {
-			if (testNavigation != null)
-			{
-				toolbar.removeNavigation(testNavigation);
-				testNavigation = null;
-			}
-		});
 	}
 	@Override
 	protected void shutDown()
 	{
 		running = false;
-		removeSidePanel();
-
 		wiki.stop();
 		events.unregister(custom);
 		custom.shutDown();
@@ -569,18 +523,6 @@ public class CelebrationPlugin extends Plugin
 			wiki.refreshSetting();
 			return;
 		}
-		if ("sidePanel".equals(event.getKey()))
-		{
-			if (config.sidePanel())
-			{
-				addSidePanel();
-			}
-			else
-			{
-				removeSidePanel();
-			}
-			return;
-		}
 		if ("includedPopupItems".equals(event.getKey()) || "excludedPopupItems".equals(event.getKey()))
 		{
 			removeOppositePopupRules(event.getKey());
@@ -637,35 +579,6 @@ public class CelebrationPlugin extends Plugin
 		c.confirmedTotal = c.newSlot ? 1 : 2;
 		c.kc = "Example KC: 123";
 		previews.add(c);
-	}
-	void testAction(String action, PreviewTier tier)
-	{
-		switch (action)
-		{
-		case "Test selected":
-			queuePreview(tier);
-			break;
-		case "Add to queue":
-			appendPreview(tier);
-			break;
-		case "Test all tiers":
-			for (PreviewTier candidate : PreviewTier.values())
-			{
-				appendPreview(candidate);
-			}
-			break;
-		case "Next":
-			overlay.clearPreview();
-			sounds.cancelPreview();
-			break;
-		case "Stop":
-			previews.clear();
-			overlay.clearPreview();
-			sounds.cancelPreview();
-			break;
-		default:
-			break;
-		}
 	}
 	private int rarityPriority(Celebration c)
 	{

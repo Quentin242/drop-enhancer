@@ -43,13 +43,6 @@ public interface CelebrationConfig extends Config
 		return false;
 	}
 
-	@ConfigItem(keyName = "sidePanel", name = "Show sidebar panel",
-				description = "Add a sidebar panel with preview buttons and WAV selection", section = preview, position = 2)
-	default boolean sidePanel()
-	{
-		return true;
-	}
-
 	@ConfigItem(keyName = "previewKind", name = "Test notification type",
 				description = "New unlock adds a gold effect around the rarity frame; repeat keeps the rarity frame", section = preview,
 				position = 1)
@@ -61,8 +54,7 @@ public interface CelebrationConfig extends Config
 	@ConfigItem(
 		keyName = "previewSelection", name = "Preview tier",
 		description =
-			"Changing tier or notification type queues a complete test without cutting off the current one. Off stops previews. Use "
-			+ "the pink play sidebar for replay and queue buttons.",
+			"Changing tier or notification type queues a complete test without cutting off the current one. Off stops previews.",
 		section = preview, position = 0)
 	default PreviewSelection previewSelection()
 	{
@@ -131,7 +123,7 @@ public interface CelebrationConfig extends Config
 	}
 
 	@ConfigItem(keyName = "highlightedFile", name = "Highlighted item WAV",
-				description = "Optional custom sound for highlighted items. Blank uses High / Rare. Choose WAV in the test sidebar.",
+				description = "Optional custom sound for highlighted items. Blank uses High / Rare.",
 				section = valueDrops, position = 31)
 	default String highlightedFile()
 	{
