@@ -25,8 +25,21 @@ final class WikiCompletionClient
 	@Inject
 	Gson gson;
 	private volatile Call active;
+	private volatile OkHttpClient timed;
 
-	void cancel()
+	/** Shares the client's connection pool; only the call timeout differs. */
+	private OkHttpClient client()
+	{
+		OkHttpClient cached = timed;
+		if (cached == null)
+		{
+			cached = http.newBuilder().callTimeout(15, TimeUnit.SECONDS).build();
+			timed = cached;
+		}
+		return cached;
+	}
+
+	synchronized void cancel()
 	{
 		Call call = active;
 		if (call != null)
@@ -53,8 +66,15 @@ final class WikiCompletionClient
 							  .header("User-Agent", "DropEnhancer/0.1 (RuneLite plugin; collection-log completion statistics)")
 							  .header("Accept", "application/json")
 							  .build();
-		Call call = http.newBuilder().callTimeout(15, TimeUnit.SECONDS).build().newCall(request);
-		active = call;
+		Call call = client().newCall(request);
+		synchronized (this)
+		{
+			if (Thread.currentThread().isInterrupted())
+			{
+				throw new IOException("Refresh cancelled");
+			}
+			active = call;
+		}
 		try (Response response = call.execute())
 		{
 			ResponseBody body = response.body();
@@ -62,10 +82,7 @@ final class WikiCompletionClient
 			{
 				throw new IOException("Wiki HTTP " + response.code());
 			}
-			if (body.contentLength() > MAX_BYTES)
-			{
-				throw new IOException("Wiki response too large");
-			}
+			// contentLength() is -1 for a chunked response, so the read below is the real bound.
 			byte[] bytes = body.byteStream().readNBytes(MAX_BYTES + 1);
 			if (bytes.length > MAX_BYTES)
 			{
@@ -75,7 +92,13 @@ final class WikiCompletionClient
 		}
 		finally
 		{
-			active = null;
+			synchronized (this)
+			{
+				if (active == call)
+				{
+					active = null;
+				}
+			}
 		}
 	}
 

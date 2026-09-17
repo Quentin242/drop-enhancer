@@ -882,4 +882,130 @@ public class CelebrationFlowTest
 		verify(p.overlay, never()).show(any(), anyLong());
 	}
 
+
+	private void nativeUnlock(String name)
+	{
+		when(p.client.getVarcStrValue(net.runelite.api.gameval.VarClientID.NOTIFICATION_TITLE)).thenReturn("Collection log");
+		when(p.client.getVarcStrValue(net.runelite.api.gameval.VarClientID.NOTIFICATION_MAIN)).thenReturn("New item: <col=ffffff>" + name + "</col>");
+		p.onScriptPreFired(new ScriptPreFired(ScriptID.NOTIFICATION_START));
+		p.onScriptPreFired(new ScriptPreFired(ScriptID.NOTIFICATION_DELAY));
+	}
+
+	@Test public void popupOnlyUnlockIsRecognizedAndReplacesNativePaint()
+	{
+		nativeUnlock(NAME);
+		net.runelite.api.widgets.Widget frame = mock(net.runelite.api.widgets.Widget.class);
+		when(p.client.getWidget(net.runelite.api.gameval.InterfaceID.NotificationDisplay.FRAME)).thenReturn(frame);
+		assertTrue(release().newSlot);
+		verify(frame).setHidden(true);
+	}
+
+	@Test public void unrecognizedNotificationKeepsNativePaint()
+	{
+		net.runelite.api.widgets.Widget frame = mock(net.runelite.api.widgets.Widget.class);
+		when(p.client.getWidget(net.runelite.api.gameval.InterfaceID.NotificationDisplay.FRAME)).thenReturn(frame);
+		when(p.client.getVarcStrValue(net.runelite.api.gameval.VarClientID.NOTIFICATION_TITLE)).thenReturn("Collection log");
+		when(p.client.getVarcStrValue(net.runelite.api.gameval.VarClientID.NOTIFICATION_MAIN)).thenReturn("Unknown format");
+		p.onScriptPreFired(new ScriptPreFired(ScriptID.NOTIFICATION_START));
+		p.onScriptPreFired(new ScriptPreFired(ScriptID.NOTIFICATION_DELAY));
+		p.onBeforeRender(new BeforeRender());
+		verify(frame, never()).setHidden(true);
+	}
+
+	@Test public void chatAndNativePopupDoNotRepeatAnAlreadyPresentedUnlock()
+	{
+		chat("New item added to your collection log: " + NAME);
+		release();
+		p.time += 10000;
+		nativeUnlock(NAME);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, times(1)).show(any(), anyLong());
+	}
+
+	@Test public void popupThenChatProducesOneUnlock()
+	{
+		nativeUnlock(NAME);
+		chat("New item added to your collection log: " + NAME);
+		release();
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, times(1)).show(any(), anyLong());
+	}
+
+	@Test public void wikiSettingIsAppliedImmediately()
+	{
+		net.runelite.client.events.ConfigChanged event = new net.runelite.client.events.ConfigChanged();
+		event.setGroup("collection-celebrations"); event.setKey("refreshWikiData");
+		p.onConfigChanged(event);
+		verify(p.wiki).refreshSetting();
+	}
+
+	@Test public void previousTickKillCountCannotStickToNewLoot()
+	{
+		sync(1);
+		when(p.client.getTickCount()).thenReturn(100);
+		chat("Your General Graardor kill count is: 347.");
+		when(p.client.getTickCount()).thenReturn(101);
+		loot();
+		chat("Your General Graardor kill count is: 348.");
+		assertEquals("Kills: 348", release().kc);
+	}
+
+	@Test public void gauntletSourcesKeepNormalAndCorruptedCountsSeparate()
+	{
+		chat("Your Corrupted Gauntlet completion count is: 123.");
+		assertNotNull(p.kills.killCountFor(List.of("Corrupted Hunllef")));
+		assertNull(p.kills.killCountFor(List.of("Crystalline Hunllef")));
+		chat("Your Gauntlet completion count is: 45.");
+		assertNotNull(p.kills.killCountFor(List.of("Crystalline Hunllef")));
+		assertNull(p.kills.killCountFor(List.of("Corrupted Hunllef")));
+	}
+
+	private void prepareHighlightedCollectionDrop()
+	{
+		p.custom = new CustomSoundEvents();
+		p.custom.config = p.config; p.custom.soundQueue = p.sounds; p.custom.itemManager = p.items;
+		p.custom.groundItemsConfig = mock(net.runelite.client.plugins.grounditems.GroundItemsConfig.class);
+		when(p.custom.groundItemsConfig.getHighlightItems()).thenReturn(NAME);
+		p.custom.startUp();
+		when(p.config.repeatDrops()).thenReturn(false);
+		when(p.config.repeatCommon()).thenReturn(false);
+		sync(1);
+		loot();
+		p.time += 1500;
+	}
+
+	@Test public void highlightedCollectionAudioSurvivesDisabledRepeatPopup()
+	{
+		prepareHighlightedCollectionDrop();
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		verify(p.sounds).offerValue("CollectionLog.wav", 70, NAME);
+	}
+
+	@Test public void highlightedCollectionAudioStillWaitsForCaseRelease()
+	{
+		prepareHighlightedCollectionDrop();
+		when(p.gate.blocked()).thenReturn(true);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.sounds, never()).offerValue(anyString(), anyInt(), anyString());
+		when(p.gate.blocked()).thenReturn(false);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.sounds).offerValue("CollectionLog.wav", 70, NAME);
+	}
+
+	@Test public void highlightedCollectionAudioHonoursExclusion()
+	{
+		prepareHighlightedCollectionDrop();
+		when(p.config.excludedPopupItems()).thenReturn(NAME);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.sounds, never()).offerValue(anyString(), anyInt(), anyString());
+	}
+
+	@Test public void highlightedCollectionAudioHonoursCollectionMute()
+	{
+		prepareHighlightedCollectionDrop();
+		when(p.config.collectionAudio()).thenReturn(false);
+		p.onBeforeRender(new BeforeRender());
+		verify(p.sounds, never()).offerValue(anyString(), anyInt(), anyString());
+	}
 }

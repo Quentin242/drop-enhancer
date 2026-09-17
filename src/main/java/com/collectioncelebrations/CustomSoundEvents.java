@@ -68,7 +68,10 @@ public class CustomSoundEvents
 	{
 		for (ItemStack stack : lootReceived.getItems())
 		{
-			handleItem(stack.getId(), stack.getQuantity(), collectionItem.test(stack.getId()));
+			// Noted and placeholder ids resolve to the tradeable item, so name, price and the
+			// collection check below all describe the same item the popup shows.
+			int id = itemManager.canonicalize(stack.getId());
+			handleItem(id, stack.getQuantity(), collectionItem.test(id));
 		}
 	}
 

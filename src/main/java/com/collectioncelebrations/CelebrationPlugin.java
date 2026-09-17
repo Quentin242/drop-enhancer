@@ -23,6 +23,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.KeyCode;
 import net.runelite.api.Menu;
+import net.runelite.api.ScriptID;
 import net.runelite.api.MenuAction;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ChatMessage;
@@ -102,6 +103,10 @@ public class CelebrationPlugin extends Plugin
 	private final Set<Widget> hiddenPaint = Collections.newSetFromMap(new IdentityHashMap<>());
 	private final Map<String, Celebration> recentLoot = new HashMap<>();
 	private long sequence;
+	private boolean notificationStarted;
+	private String replacedNotification;
+	private final Set<String> notifiedUnlocks = new HashSet<>();
+	private int lastKcTick = -1;
 	private long lastAudioGroup = -1;
 	long now()
 	{
@@ -124,6 +129,14 @@ public class CelebrationPlugin extends Plugin
 		overlays.add(overlay);
 		gate.refresh();
 		running = true;
+		if (config.sidePanel())
+		{
+			addSidePanel();
+		}
+	}
+
+	private void addSidePanel()
+	{
 		javax.swing.SwingUtilities.invokeLater(() -> {
 			if (!running || testNavigation != null)
 			{
@@ -138,7 +151,7 @@ public class CelebrationPlugin extends Plugin
 			}),
 															configManager);
 			testNavigation = net.runelite.client.ui.NavigationButton.builder()
-								 .tooltip("Drop Enhancer tests")
+								 .tooltip("Drop Enhancer")
 								 .icon(TestControlsPanel.icon())
 								 .panel(panel)
 								 .priority(8)
@@ -146,10 +159,9 @@ public class CelebrationPlugin extends Plugin
 			toolbar.addNavigation(testNavigation);
 		});
 	}
-	@Override
-	protected void shutDown()
+
+	private void removeSidePanel()
 	{
-		running = false;
 		javax.swing.SwingUtilities.invokeLater(() -> {
 			if (testNavigation != null)
 			{
@@ -157,6 +169,12 @@ public class CelebrationPlugin extends Plugin
 				testNavigation = null;
 			}
 		});
+	}
+	@Override
+	protected void shutDown()
+	{
+		running = false;
+		removeSidePanel();
 
 		wiki.stop();
 		events.unregister(custom);
@@ -179,6 +197,10 @@ public class CelebrationPlugin extends Plugin
 		gate.reset();
 		recentLoot.clear();
 		sequence = 0;
+		notificationStarted = false;
+		replacedNotification = null;
+		notifiedUnlocks.clear();
+		lastKcTick = -1;
 		lastAudioGroup = -1;
 	}
 	@Subscribe
@@ -210,6 +232,31 @@ public class CelebrationPlugin extends Plugin
 	@Subscribe
 	public void onScriptPreFired(ScriptPreFired e)
 	{
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			if (e.getScriptId() == ScriptID.NOTIFICATION_START)
+			{
+				notificationStarted = true;
+				replacedNotification = null;
+				restorePaint();
+			}
+			else if (e.getScriptId() == ScriptID.NOTIFICATION_DELAY && notificationStarted)
+			{
+				notificationStarted = false;
+				String title = client.getVarcStrValue(VarClientID.NOTIFICATION_TITLE);
+				String main = client.getVarcStrValue(VarClientID.NOTIFICATION_MAIN);
+				String text = main == null ? "" : Text.removeTags(main).trim();
+				if ("Collection log".equalsIgnoreCase(title) && text.startsWith("New item:"))
+				{
+					String name = text.substring("New item:".length()).trim();
+					if (!name.isEmpty())
+					{
+						unlock(name);
+						replacedNotification = main;
+					}
+				}
+			}
+		}
 		if (e.getScriptId() != COLLECTION_DELAYED_TRANSMIT || client.getGameState() != GameState.LOGGED_IN ||
 			client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
 		{
@@ -258,7 +305,16 @@ public class CelebrationPlugin extends Plugin
 		{
 			return;
 		}
+		long revision = kills.revision();
 		kills.onChatMessage(e);
+		if (kills.revision() != revision)
+		{
+			lastKcTick = client.getTickCount();
+			for (Celebration c : recentLoot.values())
+			{
+				attachKc(c);
+			}
+		}
 		if (e.getType() != ChatMessageType.GAMEMESSAGE && e.getType() != ChatMessageType.SPAM)
 		{
 			return;
@@ -268,7 +324,15 @@ public class CelebrationPlugin extends Plugin
 		{
 			return;
 		}
-		String name = message.substring(UNLOCK.length());
+		unlock(message.substring(UNLOCK.length()).trim());
+	}
+
+	private void unlock(String name)
+	{
+		if (name.isEmpty() || !notifiedUnlocks.add(name.toLowerCase(Locale.ROOT)))
+		{
+			return;
+		}
 		knownLoggedNames.add(name.toLowerCase(Locale.ROOT));
 		sounds.cancelValue(name);
 		long now = now();
@@ -369,7 +433,8 @@ public class CelebrationPlugin extends Plugin
 				boolean knownOwned = ledger.obtained(id) || knownLoggedNames.contains(name.toLowerCase(Locale.ROOT));
 				boolean collectionType = ledger.get(id) != null || wiki.entry(id, name) != null;
 				target.extraItem = !knownOwned && !collectionType && ledger.get(id) == null;
-				if (popupIncluded(name, stack.getValue()) || (config.repeatDrops() && (knownOwned || collectionType)))
+				if (popupIncluded(name, stack.getValue()) || ((knownOwned || collectionType) &&
+					(config.repeatDrops() || (config.highlightedItemSound() && custom.highlighted(name, stack.getValue())))))
 				{
 					// A received collection-item drop can be presented before personal quantities sync.
 					// Ownership and exact totals still require authoritative collection-log data.
@@ -380,6 +445,7 @@ public class CelebrationPlugin extends Plugin
 			{
 				recentLoot.put(name.toLowerCase(Locale.ROOT), target);
 				target.audioGroup = rewardSequence;
+				target.lootTick = client.getTickCount();
 				target.itemId = id;
 				target.source = e.getName();
 				target.dropQuantity = stack.getValue();
@@ -496,6 +562,23 @@ public class CelebrationPlugin extends Plugin
 	{
 		if (!"collection-celebrations".equals(event.getGroup()))
 		{
+			return;
+		}
+		if ("refreshWikiData".equals(event.getKey()))
+		{
+			wiki.refreshSetting();
+			return;
+		}
+		if ("sidePanel".equals(event.getKey()))
+		{
+			if (config.sidePanel())
+			{
+				addSidePanel();
+			}
+			else
+			{
+				removeSidePanel();
+			}
 			return;
 		}
 		if ("includedPopupItems".equals(event.getKey()) || "excludedPopupItems".equals(event.getKey()))
@@ -643,7 +726,7 @@ public class CelebrationPlugin extends Plugin
 
 	private void attachKc(Celebration c)
 	{
-		if (c.kc != null || c.source == null || now() - c.created > 5000)
+		if (c.kc != null || c.source == null || c.lootTick != lastKcTick || lastKcTick < 0 || now() - c.created > 5000)
 		{
 			return;
 		}
@@ -680,14 +763,19 @@ public class CelebrationPlugin extends Plugin
 		{
 			attachKc(c);
 		}
-		if (overlay.idle() && !hold && !sounds.busy())
+		// This runs on every frame, so nothing is allocated while both queues are empty.
+		if (overlay.idle() && !hold && (pending.size() > 0 || previews.size() > 0) && !sounds.busy())
 		{
-			Map<Celebration, Integer> priorities = new IdentityHashMap<>();
-			Map<Celebration, Long> values = new IdentityHashMap<>();
-			Comparator<Celebration> order = Comparator.comparing((Celebration c) -> c.newSlot)
-				.thenComparingInt(c -> priorities.computeIfAbsent(c, this::rarityPriority))
-				.thenComparingLong(c -> values.computeIfAbsent(c, this::valuePriority));
-			Celebration c = pending.poll(n -> now >= n.due, order);
+			Celebration c = null;
+			if (pending.size() > 0)
+			{
+				Map<Celebration, Integer> priorities = new IdentityHashMap<>();
+				Map<Celebration, Long> values = new IdentityHashMap<>();
+				Comparator<Celebration> order = Comparator.comparing((Celebration n) -> n.newSlot)
+					.thenComparingInt(n -> priorities.computeIfAbsent(n, this::rarityPriority))
+					.thenComparingLong(n -> values.computeIfAbsent(n, this::valuePriority));
+				c = pending.poll(n -> now >= n.due, order);
+			}
 			if (c == null && pending.size() == 0)
 			{
 				c = previews.poll(n -> true, Comparator.comparingInt(this::rarityPriority));
@@ -756,6 +844,12 @@ public class CelebrationPlugin extends Plugin
 						}
 					}
 				}
+				else if (!popupExcluded(c) && c.previewTier == null && config.collectionAudio() &&
+					config.highlightedItemSound() && custom.highlighted(c.name, c.dropQuantity))
+				{
+					sounds.offerValue(custom.highlightedRewardFile(c.itemId, c.dropQuantity, c.tier),
+						custom.highlightedRewardVolume(c.itemId, c.dropQuantity, c.tier), c.name);
+				}
 			}
 		}
 		// Ready collection notifications own the first available audio slot. A stream
@@ -770,7 +864,9 @@ public class CelebrationPlugin extends Plugin
 			hiddenPaint.clear();
 		}
 		// Only replace collection-log paint; never change game popup settings or the root used by case plugins.
-		if (config.showPopups() && "Collection log".equalsIgnoreCase(client.getVarcStrValue(VarClientID.NOTIFICATION_TITLE)))
+		if (config.showPopups() && replacedNotification != null &&
+			replacedNotification.equals(client.getVarcStrValue(VarClientID.NOTIFICATION_MAIN)) &&
+			"Collection log".equalsIgnoreCase(client.getVarcStrValue(VarClientID.NOTIFICATION_TITLE)))
 		{
 			for (int component : PAINT)
 			{

@@ -97,6 +97,11 @@ public class KillCountTracker
 	// - found by reading raw messages in a client log.
 	private static final Pattern COLOUR_MARKUP_PATTERN = Pattern.compile("<[^<>]*>|@[a-zA-Z0-9_]+@");
 
+	private long revision;
+	long revision()
+	{
+		return revision;
+	}
 	private long lastUpdateMillis;
 	private String lastBoss;
 	private int lastKillCount;
@@ -141,6 +146,7 @@ public class KillCountTracker
 			lastBoss = boss;
 			lastKillCount = parseCount(matcher.group("kc"));
 			lastUpdateMillis = System.currentTimeMillis();
+			revision++;
 			lastKind = kindOf(matcher.group("pre"), matcher.group("post"), boss);
 			return;
 		}
@@ -151,6 +157,7 @@ public class KillCountTracker
 			lastBoss = clueMatcher.group("difficulty") + " Treasure Trails";
 			lastKillCount = parseCount(clueMatcher.group("kc"));
 			lastUpdateMillis = System.currentTimeMillis();
+			revision++;
 			lastKind = KillCountKind.COMPLETIONS;
 			return;
 		}
@@ -163,6 +170,7 @@ public class KillCountTracker
 				lastBoss = fixedSource.getSource();
 				lastKillCount = parseCount(fixedMatcher.group("kc"));
 				lastUpdateMillis = System.currentTimeMillis();
+				revision++;
 				lastKind = fixedSource.getKind();
 				return;
 			}
@@ -228,11 +236,13 @@ public class KillCountTracker
 			return null;
 		}
 		String normalizedBoss = normalize(lastBoss);
+		String lootSource = normalizedBoss.equals("corrupted gauntlet") ? "corrupted hunllef" :
+			normalizedBoss.equals("gauntlet") ? "crystalline hunllef" : normalizedBoss;
 		String normalizedAlias = normalize(BOSS_ALIASES.getOrDefault(lastBoss, lastBoss));
 		boolean matches = candidateSources.stream()
 							  .map(KillCountTracker::normalize)
 							  .anyMatch(source
-										-> matchesSource(normalizedBoss, source) || matchesSource(normalizedAlias, source) ||
+										-> lootSource.equals(source) || matchesSource(normalizedBoss, source) || matchesSource(normalizedAlias, source) ||
 											   isClueWildcardMatch(source));
 		if (!matches)
 		{

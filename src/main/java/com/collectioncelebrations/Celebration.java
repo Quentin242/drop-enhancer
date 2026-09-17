@@ -19,6 +19,7 @@ final class Celebration
 	Integer confirmedTotal;
 	Integer lastSyncedTotal;
 	String kc;
+	int lootTick = -1;
 	PreviewTier previewTier;
 	PreviewTier tier;
 	long value;

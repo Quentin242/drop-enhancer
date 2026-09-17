@@ -39,6 +39,7 @@ class WikiRarity
 	private volatile Map<Integer, Entry> entries = Map.of();
 	private ExecutorService loader;
 	private volatile int generation;
+	Path dataDirectory = RuneLite.RUNELITE_DIR.toPath().resolve("collection-celebrations/data");
 	static final class Entry
 	{
 		final int id;
@@ -55,7 +56,7 @@ class WikiRarity
 			this.tabs = tabs;
 		}
 	}
-	void start()
+	synchronized void start()
 	{
 		int session = ++generation;
 		loader = Executors.newSingleThreadExecutor(r -> {
@@ -64,14 +65,11 @@ class WikiRarity
 			return t;
 		});
 		loader.execute(() -> {
-			Path folder = RuneLite.RUNELITE_DIR.toPath().resolve("collection-celebrations/data");
+			Path folder = dataDirectory;
 			try (Reader reader = Files.newBufferedReader(folder.resolve("collection-log.json"), StandardCharsets.UTF_8))
 			{
 				Map<Integer, Entry> loaded = parse(gson.fromJson(reader, JsonObject.class));
-				if (generation == session)
-				{
-					install(loaded);
-				}
+				installCurrent(loaded, session);
 			}
 			catch (Exception ignored)
 			{ /* Missing/unreadable data is displayed as unavailable. */
@@ -104,16 +102,25 @@ class WikiRarity
 			}
 		});
 	}
-	void stop()
+	synchronized void stop()
 	{
 		generation++;
-		remote.cancel();
 		if (loader != null)
 		{
 			loader.shutdownNow();
 			loader = null;
 		}
+		remote.cancel();
 	}
+	synchronized void refreshSetting()
+	{
+		if (loader != null)
+		{
+			stop();
+			start();
+		}
+	}
+
 	private void refreshCompletion(Path folder, int session)
 	{
 		Path cache = folder.resolve("wiki-completion-cache.json");
@@ -126,11 +133,10 @@ class WikiRarity
 			{
 				throw new IllegalArgumentException("Empty cache");
 			}
-			if (generation != session)
+			if (!installCurrent(loaded, session))
 			{
 				return;
 			}
-			install(loaded);
 			long age = now - saved.get("fetchedAt").getAsLong();
 			if (age >= 0 && age < 86400000L)
 			{
@@ -148,11 +154,10 @@ class WikiRarity
 		{
 			JsonObject data = remote.fetch();
 			Map<Integer, Entry> loaded = parse(data);
-			if (generation != session)
+			if (!installCurrent(loaded, session))
 			{
 				return;
 			}
-			install(loaded);
 			JsonObject saved = new JsonObject();
 			saved.addProperty("fetchedAt", now);
 			saved.addProperty("attribution", "OSRS Wiki contributors: Module:Collection_log/data.json and completion.json");
@@ -165,7 +170,13 @@ class WikiRarity
 			try
 			{
 				Files.writeString(temporary, gson.toJson(saved), StandardCharsets.UTF_8);
-				Files.move(temporary, cache, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				synchronized (this)
+				{
+					if (generation == session)
+					{
+						Files.move(temporary, cache, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
 			}
 			finally
 			{
@@ -213,6 +224,16 @@ class WikiRarity
 		}
 		return Collections.unmodifiableMap(result);
 	}
+	private synchronized boolean installCurrent(Map<Integer, Entry> loaded, int session)
+	{
+		if (generation != session)
+		{
+			return false;
+		}
+		install(loaded);
+		return true;
+	}
+
 	private void install(Map<Integer, Entry> loaded)
 	{
 		Map<String, RarityResolver.CompletionEntry> raw = new LinkedHashMap<>();

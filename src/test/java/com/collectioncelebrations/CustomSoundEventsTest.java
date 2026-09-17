@@ -24,6 +24,9 @@ public class CustomSoundEventsTest
 		events.config = mock(CelebrationConfig.class, CALLS_REAL_METHODS);
 		events.soundQueue = mock(SoundQueue.class);
 		events.itemManager = mock(ItemManager.class);
+		// The real canonicalize maps noted/placeholder ids onto the tradeable item; these tests
+		// already use canonical ids, so it is the identity here.
+		when(events.itemManager.canonicalize(anyInt())).thenAnswer(call -> call.getArgument(0));
 		events.groundItemsConfig = mock(GroundItemsConfig.class);
 		when(events.groundItemsConfig.getHighlightItems()).thenReturn("Test item");
 		events.startUp();

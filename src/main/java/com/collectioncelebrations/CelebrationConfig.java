@@ -43,6 +43,13 @@ public interface CelebrationConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(keyName = "sidePanel", name = "Show sidebar panel",
+				description = "Add a sidebar panel with preview buttons and WAV selection", section = preview, position = 2)
+	default boolean sidePanel()
+	{
+		return true;
+	}
+
 	@ConfigItem(keyName = "previewKind", name = "Test notification type",
 				description = "New unlock adds a gold effect around the rarity frame; repeat keeps the rarity frame", section = preview,
 				position = 1)

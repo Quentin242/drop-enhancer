@@ -27,7 +27,7 @@ final class TestControlsPanel extends PluginPanel
 		JPanel controls = new JPanel(new GridLayout(0, 1, 0, 6));
 		controls.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		controls.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
-		JLabel title = new JLabel("Drop Enhancer tests");
+		JLabel title = new JLabel("Drop Enhancer");
 		title.setForeground(Color.WHITE);
 		controls.add(title);
 		JComboBox<PreviewTier> tier = new JComboBox<>(PreviewTier.values());
