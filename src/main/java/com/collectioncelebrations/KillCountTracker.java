@@ -24,7 +24,7 @@ import net.runelite.client.util.Text;
 @Singleton
 public class KillCountTracker
 {
-	// "count " is left outside the post group on purpose, so that group holds only the verb.
+	// Capture the count verb separately from the literal "count".
 	private static final Pattern KILL_COUNT_PATTERN =
 		Pattern.compile("Your (?<pre>completion count for |subdued |completed )?"
 							+ "(?<boss>.+?) "
@@ -70,8 +70,7 @@ public class KillCountTracker
 	private static final String HALLOWED_SEPULCHRE = "Hallowed Sepulchre";
 	private static final String HUNTER_GUILD = "Hunter Guild";
 
-	// The Sepulchre appears twice on purpose: floors and coffins are counted separately but share a
-	// tab, so whichever message arrived last is the one that gets attached.
+	// Sepulchre floors and coffins share a tab; use the latest count message.
 	private static final List<FixedSource> FIXED_SOURCES =
 		List.of(new FixedSource(DEEP_DELVE_PATTERN, DOOM_OF_MOKHAIOTL, KillCountKind.DEEP_DELVES),
 				new FixedSource(RIFTS_CLOSED_PATTERN, GUARDIANS_OF_THE_RIFT, KillCountKind.RIFTS),

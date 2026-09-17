@@ -29,8 +29,7 @@ public class RarityResolver
 	private static final double COMPLETION_WEIGHT = 0.6;
 	private static final double VALUE_WEIGHT = 0.4;
 
-	// Percentile cutoffs (not user-configurable - "percentile" isn't a meaningful knob for players
-	// to tune on an already-composite score).
+	// Percentile cutoffs for the completion and composite scores.
 	private static final double UNCOMMON_PERCENTILE = 50;
 	private static final double RARE_PERCENTILE = 80;
 	private static final double VERY_RARE_PERCENTILE = 95;
@@ -99,7 +98,7 @@ public class RarityResolver
 		Collections.shuffle(shuffled, ThreadLocalRandom.current());
 
 		RarityTier targetTier = RarityTier.valueOf(tier.name());
-		// Preserve upstream ranking, but compute the distribution once per button click.
+		// Reuse one distribution across the preview candidates.
 		Dataset previewDataset = buildDataset(data);
 		for (int itemId : shuffled)
 		{

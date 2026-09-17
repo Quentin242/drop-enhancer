@@ -120,7 +120,7 @@ class CelebrationOverlay extends Overlay
 			int y = (int)Math.round(top - height - 12 + (targetY - top + height + 12) * slideProgress(elapsed));
 			g.clipRect(left, top, client.getViewportWidth(), client.getViewportHeight());
 			g.setComposite(AlphaComposite.SrcOver.derive((float)Math.max(0, Math.min(1, remaining / (double)FADE_MS))));
-			// Draw geometry and fonts at the actual target size, never stretch a popup bitmap.
+			// Render geometry and fonts at the target size.
 			drawPanel(g, x, y, width, current, TierStyle.color(current.tier, config, groundItemsConfig),
 					  config.showItemIcon() && current.itemId >= 0 ? items.getImage(current.itemId) : null, config.showTotal(),
 					  config.showKc(), config.showValue(), config.showWiki(), config, elapsed);
@@ -361,7 +361,7 @@ class CelebrationOverlay extends Overlay
 	private static void drawUnlockEffect(Graphics2D g, Layout l, long elapsed)
 	{
 		double pulse = .5 + .5 * Math.sin(elapsed / 400.0);
-		// Persistent gold title ribbon, with a slow shimmer rather than a barely visible outer line.
+		// Gold title ribbon with a slow shimmer.
 		g.setPaint(new GradientPaint(l.p(68), 0, new Color(171, 110, 22, 85), l.p(240), 0, new Color(244, 190, 58, 115), true));
 		g.fillRoundRect(l.p(68), l.p(10), l.p(344), l.p(26), l.p(8), l.p(8));
 		for (int side = 0; side < 2; side++)

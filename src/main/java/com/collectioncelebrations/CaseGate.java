@@ -55,7 +55,7 @@ class CaseGate
 
 	void refresh()
 	{
-		// Public overlay metadata only. No private fields, reflective access, or dependencies on Hub jars.
+		// Identify case plugins by their public overlay names.
 		clue = overlays.anyMatch(o -> "ClueCaseOverlay".equals(o.getName()));
 		loot = overlays.anyMatch(o -> "LootCaseOpeningOverlay".equals(o.getName()));
 	}
