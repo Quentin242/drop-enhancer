@@ -85,6 +85,8 @@ public class CelebrationPlugin extends Plugin
 	@Inject
 	CaseGate gate;
 	@Inject
+	CoxRewardGate cox;
+	@Inject
 	SoundQueue sounds;
 	@Inject
 	CustomSoundEvents custom;
@@ -150,6 +152,7 @@ public class CelebrationPlugin extends Plugin
 		overlay.clear();
 		sounds.reset();
 		gate.reset();
+		cox.reset();
 		recentLoot.clear();
 		sequence = 0;
 		notificationStarted = false;
@@ -181,6 +184,10 @@ public class CelebrationPlugin extends Plugin
 		if (e.getGroupId() == InterfaceID.DOM_END_LEVEL_UI)
 		{
 			gate.noteDoomInterface();
+		}
+		if (e.getGroupId() == InterfaceID.RAIDS_REWARDS)
+		{
+			cox.noteChestOpened();
 		}
 	}
 
@@ -279,7 +286,12 @@ public class CelebrationPlugin extends Plugin
 		{
 			return;
 		}
-		unlock(message.substring(UNLOCK.length()).trim());
+		String unlocked = message.substring(UNLOCK.length()).trim();
+		if (cox.covers(unlocked))
+		{
+			cox.censor(e.getMessageNode());
+		}
+		unlock(unlocked);
 	}
 
 	private void unlock(String name)
@@ -697,7 +709,8 @@ public class CelebrationPlugin extends Plugin
 				Comparator<Celebration> order = Comparator.comparing((Celebration n) -> n.newSlot)
 					.thenComparingInt(n -> priorities.computeIfAbsent(n, this::rarityPriority))
 					.thenComparingLong(n -> values.computeIfAbsent(n, this::valuePriority));
-				c = pending.poll(n -> now >= n.due, order);
+				// A Chambers unique waits for its chest; everything else behind it still goes through.
+				c = pending.poll(n -> now >= n.due && !cox.holds(n), order);
 			}
 			if (c == null && pending.size() == 0)
 			{

@@ -16,6 +16,16 @@ public interface CelebrationConfig extends Config
 				   closedByDefault = true)
 	String celebrations = "celebrations";
 
+	@ConfigItem(keyName = "hideCoxRewards", name = "Hide CoX rewards",
+				description = "Chambers of Xeric announces a unique before the team reaches the chest. Censor that chat line and "
+							  + "hold the popup and its sound until the reward chest is opened, so the walk back still reveals it. "
+							  + "Other raids send their collection log only after the chest, so they are unaffected.",
+				section = celebrations, position = 3)
+	default boolean hideCoxRewards()
+	{
+		return false;
+	}
+
 	@ConfigSection(name = "Popup & effects", description = "Position, animation effects, text, colours and statistics", position = 1,
 				   closedByDefault = true)
 	String appearance = "appearance";

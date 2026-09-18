@@ -37,6 +37,7 @@ public class CelebrationFlowTest
 		p.items = mock(ItemManager.class);
 		p.config = mock(CelebrationConfig.class, CALLS_REAL_METHODS);
 		p.gate = mock(CaseGate.class);
+		p.cox = mock(CoxRewardGate.class);
 		p.sounds = mock(SoundQueue.class);
 		p.overlay = mock(CelebrationOverlay.class);
 		p.wiki = mock(WikiRarity.class);
@@ -801,6 +802,75 @@ public class CelebrationFlowTest
 		verify(p.overlay, times(1)).show(any(), anyLong());
 		when(p.gate.blocked()).thenReturn(false);
 		assertReleaseOrder("New rare");
+	}
+
+	private void chestOpened()
+	{
+		net.runelite.api.events.WidgetLoaded event = new net.runelite.api.events.WidgetLoaded();
+		event.setGroupId(539);
+		p.onWidgetLoaded(event);
+	}
+
+	private void realCoxGate()
+	{
+		p.cox = new CoxRewardGate();
+		p.cox.client = p.client;
+		p.cox.config = p.config;
+		when(p.config.hideCoxRewards()).thenReturn(true);
+	}
+
+	@Test
+	public void aChambersUniqueWaitsForTheChestWithoutAnyCasePlugin()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(false);
+		queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		// No case opening to wait for, so the chest alone is the reveal.
+		chestOpened();
+		assertEquals("Twisted bow", release().name);
+	}
+
+	@Test
+	public void aChambersUniqueStillWaitsForACaseOpeningAfterTheChest()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(true);
+		queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+		chestOpened();
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		// The chest is open but the case is still spinning.
+		verify(p.overlay, never()).show(any(), anyLong());
+		when(p.gate.blocked()).thenReturn(false);
+		assertEquals("Twisted bow", release().name);
+	}
+
+	@Test
+	public void anOrdinaryDropDoesNotWaitForTheChambersChest()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(false);
+		queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+		queuedItem(2, "Abyssal whip", RarityTier.UNCOMMON, 2000000, 1, true);
+		// The whip is behind a held unique and must still be presented.
+		assertEquals("Abyssal whip", release().name);
+	}
+
+	@Test
+	public void openingTheChambersChestTellsTheGate()
+	{
+		net.runelite.api.events.WidgetLoaded event = new net.runelite.api.events.WidgetLoaded();
+		event.setGroupId(539);
+		p.onWidgetLoaded(event);
+		verify(p.cox).noteChestOpened();
+
+		// Any other interface leaves a held unique exactly where it is.
+		event.setGroupId(162);
+		p.onWidgetLoaded(event);
+		verify(p.cox, times(1)).noteChestOpened();
 	}
 
 	@Test
