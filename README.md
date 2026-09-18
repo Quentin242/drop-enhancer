@@ -1,31 +1,32 @@
 # Drop Enhancer
 
-Configurable drop popups and sounds for RuneLite.
+Configurable popups and sounds for collection log unlocks and other notable drops.
 
-- Collection-log unlock and repeat-drop popups.
-- Rarity colours, collection statistics and configurable sounds.
-- Item inclusion/exclusion rules and Ground Items value-tier audio.
-- Your own WAV per rarity tier, and popup previews from the settings.
+## What it does
 
-Enable **Chat**, **Pop-up**, or **Both** for collection-log notifications in the OSRS settings. With both enabled, Drop Enhancer shows one unlock notification.
+- Shows a popup for every new collection log unlock, and optionally for repeat drops.
+- Colours each popup by rarity and shows up to five statistics: collection count, kill count, item value, wiki completion and drop rate.
+- Plays a sound per rarity tier, plus value-based audio for ground item drops.
+- Lets you include or exclude individual items, with wildcard and quantity rules.
+- Holds a notification until a Clue Case or Loot Case reel has finished.
+- Previews any popup and sound straight from the settings.
 
-For custom audio, put an uncompressed PCM `.wav` file (up to 32 MB) in `.runelite/collection-celebrations/sounds/` and enter its filename in the tier's WAV setting. Keep the default filename to use the bundled sound, or leave the field blank to mute it. The separate highlighted-item WAV falls back to the Rare sound when blank.
+## Setup
 
-Open pages of your collection log to load your item quantities. These reset on logout or world hop. “Last synced” shows the last quantity read from the log; “Temporary” shows 1 for an observed unlock and 0 when ownership is unknown.
+Turn on the game's collection log notifications (**Chat**, **Pop-up** or **Both**). With **Both**, Drop Enhancer still shows a single unlock notification.
 
-Enable **Refresh wiki completion data** to load item definitions and community completion percentages. Changes take effect immediately. Downloads contain public data, send no player information, and are cached for up to one day. These percentages are separate from your own collection quantities.
+Open pages of your collection log so the plugin can read your item quantities. Those reset on logout or world hop.
 
-Optional files in `.runelite/collection-celebrations/data/` are loaded at startup:
+## Options worth knowing
 
-- `collection-log.json`: local item definitions and completion percentages.
-- `drop-rates.json`: per-source probabilities, for example `{"Source name": {"Item name": 0.00125}}`. Values must be greater than 0 and at most 1.
+**Custom sounds** — put an uncompressed PCM `.wav` (up to 32 MB) in `.runelite/collection-celebrations/sounds/` and enter its filename in the tier's WAV setting. Keep the default filename for the bundled sound, or leave it blank to mute the tier.
 
-Neither file is required or bundled. Missing or unreadable files are ignored.
+**Refresh wiki data** — **on by default.** The plugin downloads public item lists, completion percentages and drop rates from `oldschool.runescape.wiki`, refreshed weekly on the Thursday after the Wednesday game update. This contacts a third-party server that is not controlled or verified by the RuneLite developers, so the wiki receives your IP address as it would for any web request. No player name, collection contents or other personal data is ever sent. Turn the setting off to stop all wiki requests; existing data is kept if a refresh fails. Wiki data is CC BY-NC-SA 3.0 by OSRS Wiki contributors and is not bundled with the plugin.
 
-**Highlighted item sound** works with repeat popups disabled. Collection-item exclusions, collection-audio mute and tier volume settings still apply.
+**Drop rate** is shown for the matching source. Guaranteed drops and items the wiki does not list leave the statistic out; variants the game does not name show a range such as `1/18 – 1/19`. Rates are for display and never change rarity colours or sounds.
 
-With Clue Case or Loot Case, recognized rewards wait at least ten seconds and remain queued while the reward interface is hidden. This estimates when the reel finishes; it does not detect the exact end. Popup and queued audio wait together. Audio already playing finishes normally. Kill counts require a matching message in the same game tick as the loot.
+## Credits
 
-Based on [Collection Log Popup Enhanced](https://github.com/TimHeessels/collection-log-popup-enhanced) by SnakeSteak and [Custom Sounds](https://github.com/daanbom/Custom-Drop-Sounds) by daanbom. Integration by maiz. RuneLite provides client assets; optional collection data credits OSRS Wiki contributors.
+Based on [Collection Log Popup Enhanced](https://github.com/TimHeessels/collection-log-popup-enhanced) by SnakeSteak and [Custom Sounds](https://github.com/daanbom/Custom-Drop-Sounds) by daanbom. Integration by maiz. RuneLite provides client assets; optional wiki data credits OSRS Wiki contributors.
 
-Source code: [BSD-2-Clause](LICENSE). Full credits and upstream licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Rare, Very rare and collection-log sounds courtesy of **daanbom / Custom Sounds**, used with permission. Common, Uncommon and Pet use original synthesized sounds. See [audio terms](AUDIO-PERMISSION.md).
+Source code is [BSD-2-Clause](LICENSE). Rare, Very rare and collection-log sounds are courtesy of **daanbom / Custom Sounds**, used with permission; Common, Uncommon and Pet are original synthesized sounds. Full credits and upstream licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [audio terms](AUDIO-PERMISSION.md).

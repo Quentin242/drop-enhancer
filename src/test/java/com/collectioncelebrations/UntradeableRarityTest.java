@@ -27,7 +27,7 @@ public class UntradeableRarityTest
 		config = mock(CelebrationConfig.class, CALLS_REAL_METHODS);
 		drops = mock(DropRateResolver.class);
 		ItemComposition other = mock(ItemComposition.class);
-		when(other.isTradeable()).thenReturn(true);
+		when(other.isGeTradeable()).thenReturn(true);
 		when(items.getItemComposition(anyInt())).thenReturn(other);
 		target = mock(ItemComposition.class);
 		when(items.getItemComposition(20)).thenReturn(target);
@@ -65,7 +65,7 @@ public class UntradeableRarityTest
 	@Test
 	public void tradeableItemsStillRespectValueMode()
 	{
-		when(target.isTradeable()).thenReturn(true);
+		when(target.isGeTradeable()).thenReturn(true);
 		when(config.rarityBasis()).thenReturn(RarityBasis.VALUE);
 		assertEquals(RarityTier.COMMON, resolver.resolve(20, "Item 20").getTier());
 		when(items.getItemPrice(20)).thenReturn(100000000);

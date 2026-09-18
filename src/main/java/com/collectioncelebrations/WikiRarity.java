@@ -6,9 +6,15 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.Gson;
 import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,6 +43,11 @@ class WikiRarity
 	@Inject
 	DropRateResolver dropRates;
 	private volatile Map<Integer, Entry> entries = Map.of();
+	private volatile WikiDropRates wikiDrops = new WikiDropRates();
+	/** Raised whenever stored rates gain a new shape, so an older cache is replaced rather than shown. */
+	private static final int CACHE_FORMAT = 1;
+	private static final long FORCE_INTERVAL = 60000L;
+	private volatile long lastForced;
 	private ExecutorService loader;
 	private volatile int generation;
 	Path dataDirectory = RuneLite.RUNELITE_DIR.toPath().resolve("collection-celebrations/data");
@@ -56,9 +67,32 @@ class WikiRarity
 			this.tabs = tabs;
 		}
 	}
+	/**
+	 * Old School updates land on Wednesday and the wiki catches up within a day, so a cache written
+	 * before the most recent Thursday is out of date. Refreshing weekly rather than daily keeps the
+	 * wiki's own load to a seventh of what an every-start check would cost.
+	 */
+	static boolean staleSince(long fetchedAt, long now)
+	{
+		if (fetchedAt <= 0 || fetchedAt > now)
+		{
+			return true;
+		}
+		long thursday = Instant.ofEpochMilli(now).atZone(ZoneOffset.UTC)
+						   .with(TemporalAdjusters.previousOrSame(DayOfWeek.THURSDAY))
+						   .truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli();
+		return fetchedAt < thursday;
+	}
+
 	synchronized void start()
 	{
+		start(false);
+	}
+
+	private synchronized void start(boolean forceRefresh)
+	{
 		int session = ++generation;
+		remote.resume();
 		loader = Executors.newSingleThreadExecutor(r -> {
 			Thread t = new Thread(r, "collection-wiki-data");
 			t.setDaemon(true);
@@ -88,9 +122,12 @@ class WikiRarity
 					});
 					loaded.put(source.getKey(), values);
 				});
-				if (generation == session)
+				synchronized (this)
 				{
-					dropRates.reload(loaded);
+					if (generation == session)
+					{
+						dropRates.reload(loaded);
+					}
 				}
 			}
 			catch (Exception ignored)
@@ -98,30 +135,40 @@ class WikiRarity
 			}
 			if (generation == session && config.refreshWikiData())
 			{
-				refreshCompletion(folder, session);
+				refreshCompletion(folder, session, forceRefresh);
+				refreshDropRates(folder, session, forceRefresh);
 			}
 		});
 	}
 	synchronized void stop()
 	{
 		generation++;
+		remote.cancel();
 		if (loader != null)
 		{
 			loader.shutdownNow();
 			loader = null;
 		}
-		remote.cancel();
 	}
+	/** Switching the setting off and on refreshes now, without waiting for the weekly cutoff. */
 	synchronized void refreshSetting()
 	{
-		if (loader != null)
+		if (loader == null)
 		{
-			stop();
-			start();
+			return;
 		}
+		// Every forced refresh is a full re-download, so flicking the switch cannot repeat one.
+		long now = System.currentTimeMillis();
+		boolean force = config.refreshWikiData() && now - lastForced >= FORCE_INTERVAL;
+		if (force)
+		{
+			lastForced = now;
+		}
+		stop();
+		start(force);
 	}
 
-	private void refreshCompletion(Path folder, int session)
+	private void refreshCompletion(Path folder, int session, boolean forceRefresh)
 	{
 		Path cache = folder.resolve("wiki-completion-cache.json");
 		long now = System.currentTimeMillis();
@@ -137,8 +184,7 @@ class WikiRarity
 			{
 				return;
 			}
-			long age = now - saved.get("fetchedAt").getAsLong();
-			if (age >= 0 && age < 86400000L)
+			if (!forceRefresh && !staleSince(saved.get("fetchedAt").getAsLong(), now))
 			{
 				return;
 			}
@@ -169,7 +215,11 @@ class WikiRarity
 			Path temporary = Files.createTempFile(folder, "wiki-completion-", ".tmp");
 			try
 			{
-				Files.writeString(temporary, gson.toJson(saved), StandardCharsets.UTF_8);
+				// Streamed, not rendered to a String first: the drop cache runs to megabytes.
+				try (Writer writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8))
+				{
+					gson.toJson(saved, writer);
+				}
 				synchronized (this)
 				{
 					if (generation == session)
@@ -188,6 +238,93 @@ class WikiRarity
 			org.slf4j.LoggerFactory.getLogger(WikiRarity.class)
 				.debug("Wiki completion refresh unavailable; keeping existing data", failure);
 		}
+	}
+
+	private void refreshDropRates(Path folder, int session, boolean forceRefresh)
+	{
+		if (generation != session)
+		{
+			return;
+		}
+		Path cache = folder.resolve("wiki-drop-rates-cache.json");
+		long now = System.currentTimeMillis();
+		try (Reader reader = Files.newBufferedReader(cache, StandardCharsets.UTF_8))
+		{
+			JsonObject saved = gson.fromJson(reader, JsonObject.class);
+			// A cache written by an older build holds differently formatted rates, not merely older
+			// ones, so it is left uninstalled: local rates stay in charge until the refetch lands.
+			if (saved.get("format") != null && saved.get("format").getAsInt() == CACHE_FORMAT)
+			{
+				WikiDropRates loaded = WikiDropRates.fromJson(saved.getAsJsonObject("rates"));
+				if (!installDropRates(loaded, session))
+				{
+					return;
+				}
+				if (!forceRefresh && !staleSince(saved.get("fetchedAt").getAsLong(), now))
+				{
+					return;
+				}
+			}
+		}
+		catch (Exception ignored)
+		{ /* Keep the existing rates if a cache is absent or damaged. */
+		}
+		if (generation != session)
+		{
+			return;
+		}
+		try
+		{
+			WikiDropRates loaded = remote.fetchDropRates();
+			if (!installDropRates(loaded, session))
+			{
+				return;
+			}
+			JsonObject saved = new JsonObject();
+			saved.addProperty("fetchedAt", System.currentTimeMillis());
+			saved.addProperty("format", CACHE_FORMAT);
+			saved.addProperty("attribution", "OSRS Wiki contributors: Bucket:Dropsline");
+			saved.addProperty("source", "https://oldschool.runescape.wiki/w/Bucket:Dropsline");
+			saved.addProperty("license", "https://creativecommons.org/licenses/by-nc-sa/3.0/");
+			saved.addProperty("changes", "Source and item lookup; formatted rates, roll counts and ambiguity labels");
+			saved.add("rates", loaded.toJson(gson));
+			Files.createDirectories(folder);
+			Path temporary = Files.createTempFile(folder, "wiki-drop-rates-", ".tmp");
+			try
+			{
+				// Streamed, not rendered to a String first: the drop cache runs to megabytes.
+				try (Writer writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8))
+				{
+					gson.toJson(saved, writer);
+				}
+				synchronized (this)
+				{
+					if (generation == session)
+					{
+						Files.move(temporary, cache, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+			}
+			finally
+			{
+				Files.deleteIfExists(temporary);
+			}
+		}
+		catch (Exception failure)
+		{
+			org.slf4j.LoggerFactory.getLogger(WikiRarity.class)
+				.debug("Wiki drop rate refresh unavailable; keeping existing data", failure);
+		}
+	}
+
+	private synchronized boolean installDropRates(WikiDropRates loaded, int session)
+	{
+		if (generation != session)
+		{
+			return false;
+		}
+		wikiDrops = loaded;
+		return true;
 	}
 
 	static Map<Integer, Entry> parse(JsonObject root)
@@ -262,6 +399,12 @@ class WikiRarity
 		return resolver.resolve(id, name);
 	}
 
+	/** @return a wiki source listing {@code name}, for the settings preview, or null when none does. */
+	String previewSource(String name, int pick)
+	{
+		return wikiDrops.anySource(name, pick);
+	}
+
 	String dropRateText(String source, String name)
 	{
 		Double exact = source == null ? null : dropRates.dropProbability(source, name);
@@ -269,20 +412,33 @@ class WikiRarity
 		{
 			return probabilityText(exact);
 		}
+		String online = wikiDrops.find(source, name);
+		if (online != null)
+		{
+			return online;
+		}
+		// Withhold the name-only rate only where the wiki actually lists this source, so an item it
+		// does not carry stays blank rather than borrowing another source's number. For a source the
+		// tables never mention - an unloaded dataset, or a name the game words differently - the
+		// local dataset remains the best answer there is.
+		if (wikiDrops.covers(source))
+		{
+			return null;
+		}
 		List<DropRateResolver.SourceRate> matches = dropRates.dropRatesByItemName(name);
 		if (matches.size() == 1)
 		{
 			return probabilityText(matches.get(0).getProbability());
 		}
-		if (matches.size() == 2)
+		if (matches.size() > 1)
 		{
-			return probabilityText(matches.get(0).getProbability()) + " / " + probabilityText(matches.get(1).getProbability());
+			return "Varies";
 		}
 		return null;
 	}
 	private static String probabilityText(double value)
 	{
-		return String.format(Locale.ROOT, "1/%,.0f", 1 / value);
+		return "1/" + WikiDropRates.number(java.math.BigDecimal.valueOf(Math.round(1 / value)));
 	}
 
 	Entry example(PreviewTier tier)

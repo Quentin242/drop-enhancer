@@ -196,8 +196,16 @@ class CelebrationOverlay extends Overlay
 			l.center(g, caption, 240, 29, 18, c.newSlot ? new Color(0xFFE5A1) : config.colourCaption(), 332);
 			String name = c.name + (c.dropQuantity > 1 ? " ×" + c.dropQuantity : "");
 			l.center(g, name, 240, 66, 24, config.colourItemName(), 432);
-			l.center(g, c.source == null ? "Source unavailable" : c.source, 240, 85, 13, config.colourStatLabel(), 420);
+			l.center(g, c.source == null ? WikiDropRates.UNKNOWN_SOURCE : c.source, 240, 85, 13, config.colourStatLabel(), 420);
 			PopupStat[] choices = {config.stat1(), config.stat2(), config.stat3(), config.stat4()};
+			// Without a rate the statistic is left out entirely: a guaranteed or unlisted item has none to show.
+			boolean extraDropRate = config.showDropRate() && c.dropRateText != null
+									&& java.util.Arrays.stream(choices).noneMatch(s -> s == PopupStat.DROP_RATE);
+			if (extraDropRate)
+			{
+				l.center(g, "DROP RATE", 240, 103, 12, config.colourStatLabel(), 104);
+				l.center(g, c.dropRateText, 240, 121, 16, config.colourStatValue(), 104);
+			}
 			for (int i = 0; i < choices.length; i++)
 			{
 				String label = "", value = "—";
@@ -216,14 +224,17 @@ class CelebrationOverlay extends Overlay
 				}
 				switch (choice)
 				{
+				// A statistic that is switched off, or has nothing to report, leaves its slot empty
+				// rather than showing a labelled dash.
 				case COLLECTION_COUNT:
-					label = c.confirmedTotal != null ? "COLLECTED" : c.lastSyncedTotal != null ? "LAST SYNCED" : "TEMPORARY";
-					if (totalVisible)
+					if (!totalVisible)
 					{
-						value = String.valueOf(c.confirmedTotal != null	   ? c.confirmedTotal
-											   : c.lastSyncedTotal != null ? c.lastSyncedTotal
-																		   : c.provisionalTotal);
+						continue;
 					}
+					label = c.confirmedTotal != null ? "COLLECTED" : c.lastSyncedTotal != null ? "LAST SYNCED" : "TEMPORARY";
+					value = String.valueOf(c.confirmedTotal != null	   ? c.confirmedTotal
+										   : c.lastSyncedTotal != null ? c.lastSyncedTotal
+																	   : c.provisionalTotal);
 					break;
 				case KILL_COUNT:
 					if (!kcVisible || c.kc == null || c.kc.isBlank())
@@ -238,18 +249,20 @@ class CelebrationOverlay extends Overlay
 					label = "KILL COUNT";
 					break;
 				case VALUE:
-					label = "ITEM VALUE";
-					if (valueVisible)
+					if (!valueVisible)
 					{
-						value = c.untradeable ? "Untradeable" : String.format(java.util.Locale.ROOT, "%,d gp", c.value);
+						continue;
 					}
+					label = "ITEM VALUE";
+					value = c.untradeable ? "Untradeable" : String.format(java.util.Locale.ROOT, "%,d gp", c.value);
 					break;
 				case WIKI_COMPLETION:
-					label = "WIKI COMP.";
-					if (wikiVisible && c.wikiCompletion != null)
+					if (!wikiVisible || c.wikiCompletion == null)
 					{
-						value = String.format(java.util.Locale.ROOT, "%.2f%%", c.wikiCompletion);
+						continue;
 					}
+					label = "WIKI COMP.";
+					value = String.format(java.util.Locale.ROOT, "%.2f%%", c.wikiCompletion);
 					break;
 				case DROP_RATE:
 					label = "DROP RATE";
@@ -288,7 +301,10 @@ class CelebrationOverlay extends Overlay
 					l.center(g, "…", 240, 177, 24, accent, 50);
 				}
 			}
-			l.center(g, c.tier == null ? "" : c.tier.toString(), 240, 117, 14, accent, 100);
+			// With the extra statistic the tier name sits under the medallion, outside the frame and
+			// over bare scenery, so it is outlined there whatever the text rendering mode.
+			l.center(g, c.tier == null ? "" : c.tier.toString(), 240, extraDropRate ? 229 : 117, 14, accent, 100,
+					 extraDropRate || config.textRenderMode() == TextRenderMode.SMOOTH_OUTLINED);
 		}
 		finally
 		{
@@ -452,6 +468,10 @@ class CelebrationOverlay extends Overlay
 		}
 		void center(Graphics2D g, String value, int x, int y, int size, Color colour, int maxWidth)
 		{
+			center(g, value, x, y, size, colour, maxWidth, config.textRenderMode() == TextRenderMode.SMOOTH_OUTLINED);
+		}
+		void center(Graphics2D g, String value, int x, int y, int size, Color colour, int maxWidth, boolean outlined)
+		{
 			Font base = FontManager.getRunescapeBoldFont();
 			g.setFont(base.deriveFont(f(size)));
 			int width = p(maxWidth);
@@ -468,7 +488,7 @@ class CelebrationOverlay extends Overlay
 				value += "…";
 			}
 			int left = p(x) - g.getFontMetrics().stringWidth(value) / 2;
-			if (config.textRenderMode() == TextRenderMode.SMOOTH_OUTLINED)
+			if (outlined)
 			{
 				g.setColor(Color.BLACK);
 				g.drawString(value, left + Math.max(1, p(1)), p(y) + Math.max(1, p(1)));

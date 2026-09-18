@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.api.ChatMessageType;
@@ -571,8 +572,11 @@ public class CelebrationPlugin extends Plugin
 			return;
 		}
 		WikiRarity.Entry example = wiki.example(tier);
-		Celebration c = new Celebration(example == null ? tier.itemName : example.name, example == null ? tier.itemId : example.id, 1,
-										"Preview only", true, 0, now(), 0);
+		String name = example == null ? tier.itemName : example.name;
+		// A real source makes the test rate concrete instead of spanning every boss that drops the item.
+		String source = wiki.previewSource(name, ThreadLocalRandom.current().nextInt());
+		Celebration c = new Celebration(name, example == null ? tier.itemId : example.id, 1,
+										source == null ? WikiDropRates.PREVIEW_SOURCE : source, true, 0, now(), 0);
 		c.newSlot = kind != PreviewKind.REPEAT_DROP;
 		c.previewTier = tier;
 		c.tier = tier;
@@ -595,7 +599,13 @@ public class CelebrationPlugin extends Plugin
 		WikiRarity.Entry entry = wiki.entry(c.itemId, c.name);
 		int id = entry != null ? entry.id : c.itemId >= 0 ? c.itemId : names.getOrDefault(c.name.toLowerCase(Locale.ROOT), -1);
 		ItemComposition item = id < 0 ? null : items.getItemComposition(id);
-		return item == null || !item.isTradeable() ? 0 : itemValue(id, item, c.dropQuantity);
+		return item == null || untradeable(item) ? 0 : itemValue(id, item, c.dropQuantity);
+	}
+
+	/** Only an item that neither the Grand Exchange nor another player will take has no value at all. */
+	static boolean untradeable(ItemComposition item)
+	{
+		return !item.isGeTradeable() && !item.isTradeable();
 	}
 
 	private long itemValue(int id, ItemComposition item, int quantity)
@@ -622,7 +632,7 @@ public class CelebrationPlugin extends Plugin
 			ItemComposition item = items.getItemComposition(c.itemId);
 			if (item != null)
 			{
-				c.untradeable = !item.isTradeable();
+				c.untradeable = untradeable(item);
 				c.value = itemValue(c.itemId, item, c.dropQuantity);
 				RarityResult resolved = wiki.resolve(c.itemId, c.name);
 				if (resolved != null)

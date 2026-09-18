@@ -14,7 +14,7 @@ public class MissingWikiDataTest
 	{
 		ItemManager items = mock(ItemManager.class);
 		when(items.getItemComposition(11832)).thenReturn(mock(ItemComposition.class));
-		when(items.getItemComposition(11832).isTradeable()).thenReturn(true);
+		when(items.getItemComposition(11832).isGeTradeable()).thenReturn(true);
 		when(items.getItemPrice(11832)).thenReturn(20000000);
 		for (RarityBasis basis : RarityBasis.values())
 		{
@@ -38,7 +38,7 @@ public class MissingWikiDataTest
 		ItemManager items = mock(ItemManager.class);
 		when(items.getItemPrice(1)).thenReturn(500000);
 		when(items.getItemComposition(1)).thenReturn(mock(ItemComposition.class));
-		when(items.getItemComposition(1).isTradeable()).thenReturn(true);
+		when(items.getItemComposition(1).isGeTradeable()).thenReturn(true);
 		CelebrationConfig config = new CelebrationConfig() {
 			@Override
 			public RarityBasis rarityBasis()

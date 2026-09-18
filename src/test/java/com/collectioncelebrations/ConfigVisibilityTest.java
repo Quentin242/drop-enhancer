@@ -25,10 +25,11 @@ public class ConfigVisibilityTest
 		assertTrue(descriptor.getItems().size() > 60);
 	}
 	@Test
-	public void wikiNetworkAccessIsOptInWithPrivacyWarning()
+	public void wikiNetworkAccessIsOptOutWithPrivacyWarning()
 	{
 		CelebrationConfig config = new CelebrationConfig() {};
-		assertFalse(config.refreshWikiData());
+		// On by default, so the popup has rates out of the box; the switch remains the way to stop it.
+		assertTrue(config.refreshWikiData());
 		ConfigManager manager = mock(ConfigManager.class, CALLS_REAL_METHODS);
 		ConfigItem item = manager.getConfigDescriptor(config).getItems().stream()
 			.map(ConfigItemDescriptor::getItem).filter(c -> c.keyName().equals("refreshWikiData"))

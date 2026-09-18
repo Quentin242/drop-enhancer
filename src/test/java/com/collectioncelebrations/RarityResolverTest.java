@@ -72,7 +72,7 @@ public class RarityResolverTest
 		// high alch fallback was added. Individual tests override this per-id where needed.
 		ItemComposition defaultComposition = mock(ItemComposition.class);
 		when(itemManager.getItemComposition(anyInt())).thenReturn(defaultComposition);
-		when(defaultComposition.isTradeable()).thenReturn(true);
+		when(defaultComposition.isGeTradeable()).thenReturn(true);
 		// Default: no drop-rate data for any item, so unstubbed items behave as before the drop-rate
 		// fallback was added. Individual tests override this per-name where needed.
 		dropRateResolver = mock(DropRateResolver.class);

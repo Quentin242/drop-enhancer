@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import okhttp3.Call;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -20,11 +21,14 @@ final class WikiCompletionClient
 {
 	private static final String ROOT = "https://oldschool.runescape.wiki/w/Module:Collection_log/";
 	private static final int MAX_BYTES = 2 * 1024 * 1024;
+	/** A page must stay well inside MAX_BYTES; a thousand drop lines is roughly a quarter of it. */
+	private static final int PAGE = 1000, MAX_ROWS = 120000;
 	@Inject
 	OkHttpClient http;
 	@Inject
 	Gson gson;
 	private volatile Call active;
+	private volatile boolean cancelled;
 	private volatile OkHttpClient timed;
 
 	/** Shares the client's connection pool; only the call timeout differs. */
@@ -41,11 +45,20 @@ final class WikiCompletionClient
 
 	synchronized void cancel()
 	{
+		// A flag, not just a call cancel: the worker may be between pages, and OkHttp starts a fresh
+		// call regardless of the thread's interrupt status.
+		cancelled = true;
 		Call call = active;
 		if (call != null)
 		{
 			call.cancel();
 		}
+	}
+
+	/** Clears a previous cancel so a newly started session may issue requests again. */
+	synchronized void resume()
+	{
+		cancelled = false;
 	}
 
 	JsonObject fetch() throws IOException
@@ -55,21 +68,66 @@ final class WikiCompletionClient
 		return merge(items, completion);
 	}
 
+	WikiDropRates fetchDropRates() throws IOException
+	{
+		WikiDropRates rates = new WikiDropRates();
+		for (int offset = 0; offset < MAX_ROWS; )
+		{
+			// Ordering by the row's own JSON keeps offsets stable: page_name_sub repeats across drop
+			// lines, so ties at a page boundary could silently drop rows. Identical drop_json means an
+			// identical rate, so the ties that remain cannot change the result.
+			String query = "bucket('dropsline').select('page_name_sub','item_name','drop_json')"
+				+ ".orderBy('drop_json','asc').limit(" + PAGE + ").offset(" + offset + ").run()";
+			HttpUrl url = HttpUrl.parse("https://oldschool.runescape.wiki/api.php").newBuilder()
+				.addQueryParameter("action", "bucket").addQueryParameter("format", "json")
+				.addQueryParameter("formatversion", "2").addQueryParameter("query", query).build();
+			JsonObject response = get(url).getAsJsonObject();
+			if (response.has("error") || !response.has("bucket") || !response.get("bucket").isJsonArray())
+			{
+				throw new IOException("Wiki drop query failed");
+			}
+			JsonArray rows = response.getAsJsonArray("bucket");
+			if (rows.size() > PAGE)
+			{
+				throw new IOException("Invalid wiki drop pagination");
+			}
+			if (rows.size() == 0)
+			{
+				break;
+			}
+			rates.addPage(rows, gson);
+			// Advance by what arrived, not by what was asked: a server-side cap on limit would
+			// otherwise look like the end of the data and truncate the dataset silently.
+			offset += rows.size();
+		}
+		// Reaching the row limit keeps what was read; only an empty result discards the working cache.
+		if (rates.isEmpty())
+		{
+			throw new IOException("Empty wiki drop data");
+		}
+		return rates;
+	}
+
 	private JsonElement get(String page) throws IOException
 	{
-		if (Thread.currentThread().isInterrupted())
+		return get(HttpUrl.parse(ROOT + page + "?action=raw"));
+	}
+
+	private JsonElement get(HttpUrl url) throws IOException
+	{
+		if (cancelled || Thread.currentThread().isInterrupted())
 		{
 			throw new IOException("Refresh cancelled");
 		}
 		Request request = new Request.Builder()
-							  .url(ROOT + page + "?action=raw")
-							  .header("User-Agent", "DropEnhancer/0.1 (RuneLite plugin; collection-log completion statistics)")
+							  .url(url)
+							  .header("User-Agent", "DropEnhancer/0.1 (RuneLite plugin; +https://github.com/Quentin242/drop-enhancer)")
 							  .header("Accept", "application/json")
 							  .build();
 		Call call = client().newCall(request);
 		synchronized (this)
 		{
-			if (Thread.currentThread().isInterrupted())
+			if (cancelled || Thread.currentThread().isInterrupted())
 			{
 				throw new IOException("Refresh cancelled");
 			}

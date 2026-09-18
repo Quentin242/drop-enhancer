@@ -138,7 +138,7 @@ public class RarityResolver
 		}
 
 		Double compPercent = compPercent(data, itemId);
-		boolean untradeable = itemId >= 0 && !itemManager.getItemComposition(itemId).isTradeable();
+		boolean untradeable = itemId >= 0 && CelebrationPlugin.untradeable(itemManager.getItemComposition(itemId));
 		RarityBasis basis = untradeable ? RarityBasis.RARITY : config.rarityBasis();
 		Double completionScore = compPercent != null ? 1 - (compPercent / 100.0) : null;
 		double valueScore = untradeable ? 0 : valueScore(itemId);

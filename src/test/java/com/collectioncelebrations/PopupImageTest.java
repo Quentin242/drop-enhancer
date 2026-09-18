@@ -10,6 +10,65 @@ import static org.junit.Assert.*;
 public class PopupImageTest
 {
 	@Test
+	public void fifthStatisticKeepsAllFourExistingStatisticsAndCanBeHidden()
+	{
+		Celebration c = new Celebration("Example", -1, 1, "Boss", false, 0, 0, 0);
+		c.tier = PreviewTier.COMMON;
+		c.confirmedTotal = 3;
+		c.kc = "Kills: 347";
+		c.value = 120000;
+		c.wikiCompletion = 12.5;
+		c.dropRateText = "1/512";
+		CelebrationConfig off = new CelebrationConfig() {
+			@Override public boolean showDropRate() { return false; }
+		};
+		int[] before = effectPixels(c, off, 1200);
+		int[] after = effectPixels(c, new CelebrationConfig() {}, 1200);
+		for (int y = 100; y < 180; y++)
+		{
+			for (int x = 25; x < 490; x++)
+			{
+				if (x < 195 || x > 305)
+				{
+					assertEquals("Existing statistic changed", before[y * 510 + x], after[y * 510 + x]);
+				}
+			}
+		}
+		assertFalse(java.util.Arrays.equals(before, after));
+		c.dropRateText = "1/1024";
+		assertArrayEquals(before, effectPixels(c, off, 1200));
+		assertFalse(java.util.Arrays.equals(after, effectPixels(c, new CelebrationConfig() {}, 1200)));
+
+		// A guaranteed or unlisted item has no rate, so the statistic is left out rather than dashed.
+		c.dropRateText = null;
+		assertArrayEquals(effectPixels(c, off, 1200), effectPixels(c, new CelebrationConfig() {}, 1200));
+	}
+
+	@Test
+	public void switchedOffStatisticsLeaveNothingBehind()
+	{
+		Celebration c = new Celebration("Example", -1, 1, "Boss", false, 0, 0, 0);
+		c.tier = PreviewTier.COMMON;
+		c.confirmedTotal = 3;
+		c.kc = "Kills: 347";
+		c.value = 120000;
+		c.wikiCompletion = 12.5;
+		CelebrationConfig shown = new CelebrationConfig() {
+			@Override public boolean showDropRate() { return false; }
+		};
+		CelebrationConfig unselected = new CelebrationConfig() {
+			@Override public boolean showDropRate() { return false; }
+			@Override public PopupStat stat1() { return PopupStat.NONE; }
+			@Override public PopupStat stat2() { return PopupStat.NONE; }
+			@Override public PopupStat stat3() { return PopupStat.NONE; }
+			@Override public PopupStat stat4() { return PopupStat.NONE; }
+		};
+		// Switching every statistic off must look exactly like selecting none of them: no labelled dashes.
+		assertArrayEquals(effectPixels(c, unselected, 1200), effectPixels(c, shown, 1200, false));
+		assertFalse(java.util.Arrays.equals(effectPixels(c, shown, 1200), effectPixels(c, shown, 1200, false)));
+	}
+
+	@Test
 	public void unlockAddsOuterGoldButPreservesRarityBorder()
 	{
 		Celebration c = new Celebration("Mole claw", 7416, 1, "Giant Mole", true, 0, 0, 0);
@@ -145,11 +204,16 @@ public class PopupImageTest
 	}
 	private int[] effectPixels(Celebration c, CelebrationConfig config, long elapsed)
 	{
+		return effectPixels(c, config, elapsed, true);
+	}
+	private int[] effectPixels(Celebration c, CelebrationConfig config, long elapsed, boolean statisticsVisible)
+	{
 		BufferedImage image = new BufferedImage(510, 260, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = image.createGraphics();
+		boolean v = statisticsVisible;
 		try
 		{
-			CelebrationOverlay.drawPanel(g, 10, 10, 480, c, java.awt.Color.PINK, null, true, true, true, true, config, elapsed);
+			CelebrationOverlay.drawPanel(g, 10, 10, 480, c, java.awt.Color.PINK, null, v, v, v, v, config, elapsed);
 		}
 		finally
 		{

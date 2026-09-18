@@ -731,7 +731,7 @@ public class CelebrationFlowTest
 	{
 		ItemComposition item = mock(ItemComposition.class);
 		when(item.getName()).thenReturn(name);
-		when(item.isTradeable()).thenReturn(true);
+		when(item.isGeTradeable()).thenReturn(true);
 		when(item.getHaPrice()).thenReturn(price / 2);
 		when(p.items.canonicalize(id)).thenReturn(id);
 		when(p.items.getItemComposition(id)).thenReturn(item);
@@ -808,8 +808,8 @@ public class CelebrationFlowTest
 	{
 		queuedItem(101, "First untradeable", RarityTier.RARE, 1, 1, false);
 		queuedItem(102, "Later untradeable", RarityTier.RARE, 1000000, 1, false);
-		when(p.items.getItemComposition(101).isTradeable()).thenReturn(false);
-		when(p.items.getItemComposition(102).isTradeable()).thenReturn(false);
+		when(p.items.getItemComposition(101).isGeTradeable()).thenReturn(false);
+		when(p.items.getItemComposition(102).isGeTradeable()).thenReturn(false);
 		assertReleaseOrder("First untradeable", "Later untradeable");
 	}
 

@@ -33,14 +33,24 @@ public interface CelebrationConfig extends Config
 	@ConfigSection(name = "Test popup", description = "Synthetic new unlock and repeat examples", position = 6, closedByDefault = true)
 	String preview = "preview";
 
-	@ConfigItem(keyName = "refreshWikiData", name = "Refresh wiki completion data",
-				description = "Fetch public item lists and completion percentages from the OSRS Wiki in the background. Cached for one "
-							  + "day; sends no player data. Wiki data: CC BY-NC-SA 3.0, OSRS Wiki contributors.",
+	@ConfigItem(keyName = "refreshWikiData", name = "Refresh wiki data",
+				description = "Fetch item lists, completion percentages and drop rates from the OSRS Wiki. Refreshed weekly, after the "
+							  + "Wednesday game update; switch off and on to update now. Switch off to stop all wiki requests. Sends no "
+							  + "player data. Wiki data: CC BY-NC-SA 3.0, OSRS Wiki contributors.",
 				warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
 				section = rarity, position = -2)
 	default boolean refreshWikiData()
 	{
-		return false;
+		return true;
+	}
+
+	@ConfigItem(keyName = "showDropRate", name = "Show extra drop rate",
+				description = "Show the source-specific drop rate above the item, keeping all four selected statistics. Items with no "
+							  + "rate, including guaranteed drops, leave it out.",
+				section = appearance, position = 17)
+	default boolean showDropRate()
+	{
+		return true;
 	}
 
 	@ConfigItem(keyName = "previewKind", name = "Test notification type",
@@ -80,7 +90,7 @@ public interface CelebrationConfig extends Config
 	{
 		return 4;
 	}
-	@ConfigItem(keyName = "accent", name = "Accent", description = "Popup accent colour", section = appearance, position = 22)
+	@ConfigItem(keyName = "accent", name = "Accent", description = "Popup accent colour", section = appearance, position = 23)
 	default Color accent()
 	{
 		return new Color(205, 164, 82);
@@ -543,31 +553,31 @@ public interface CelebrationConfig extends Config
 	}
 	@Range(min = 10, max = 60)
 	@ConfigItem(keyName = "backgroundDarkness", name = "Background brightness (%)",
-				description = "Brightness of the tier-tinted background", section = appearance, position = 17)
+				description = "Brightness of the tier-tinted background", section = appearance, position = 18)
 	default int backgroundDarkness()
 	{
 		return 18;
 	}
 	@ConfigItem(keyName = "colourCaption", name = "Caption text", description = "Collection log caption colour", section = appearance,
-				position = 18)
+				position = 19)
 	default Color colourCaption()
 	{
 		return new Color(0xE7BE66);
 	}
 	@ConfigItem(keyName = "colourStatLabel", name = "Statistic labels", description = "Colour of statistic labels", section = appearance,
-				position = 20)
+				position = 21)
 	default Color colourStatLabel()
 	{
 		return new Color(0xB7BEC9);
 	}
 	@ConfigItem(keyName = "colourStatValue", name = "Statistic values", description = "Colour of statistic values", section = appearance,
-				position = 21)
+				position = 22)
 	default Color colourStatValue()
 	{
 		return new Color(0xF3E7CE);
 	}
 	@ConfigItem(keyName = "colourItemName", name = "Item name", description = "Colour of the item name", section = appearance,
-				position = 19)
+				position = 20)
 	default Color colourItemName()
 	{
 		return new Color(0xF5F3ED);

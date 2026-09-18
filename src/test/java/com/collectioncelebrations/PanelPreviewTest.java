@@ -26,6 +26,7 @@ public class PanelPreviewTest
 		Celebration c = new Celebration("Bandos chestplate", -1, 1, "General Graardor", true, 0, 0, 0);
 		c.tier = PreviewTier.RARE;
 		c.wikiCompletion = 15.6;
+		c.dropRateText = "1/381";
 		c.value = 27000000;
 		c.confirmedTotal = 1;
 		c.kc = "Kills: 347";
