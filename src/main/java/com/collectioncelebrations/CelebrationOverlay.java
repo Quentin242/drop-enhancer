@@ -195,16 +195,16 @@ class CelebrationOverlay extends Overlay
 			String caption = heading(c);
 			l.center(g, caption, 240, 29, 18, c.newSlot ? new Color(0xFFE5A1) : config.colourCaption(), 332);
 			String name = c.name + (c.dropQuantity > 1 ? " ×" + c.dropQuantity : "");
-			l.center(g, name, 240, 66, 24, config.colourItemName(), 432);
-			l.center(g, c.source == null ? WikiDropRates.UNKNOWN_SOURCE : c.source, 240, 85, 13, config.colourStatLabel(), 420);
+			l.center(g, name, 240, 62, 24, config.colourItemName(), 432);
+			l.center(g, c.source == null ? WikiDropRates.UNKNOWN_SOURCE : c.source, 240, 81, 13, config.colourStatLabel(), 420);
 			PopupStat[] choices = {config.stat1(), config.stat2(), config.stat3(), config.stat4()};
 			// Without a rate the statistic is left out entirely: a guaranteed or unlisted item has none to show.
 			boolean extraDropRate = config.showDropRate() && c.dropRateText != null
 									&& java.util.Arrays.stream(choices).noneMatch(s -> s == PopupStat.DROP_RATE);
 			if (extraDropRate)
 			{
-				l.center(g, "DROP RATE", 240, 103, 12, config.colourStatLabel(), 104);
-				l.center(g, c.dropRateText, 240, 121, 16, config.colourStatValue(), 104);
+				l.center(g, "DROP RATE", 240, 98, 12, config.colourStatLabel(), 104);
+				l.center(g, c.dropRateText, 240, 116, 16, config.colourStatValue(), 104);
 			}
 			for (int i = 0; i < choices.length; i++)
 			{
@@ -224,8 +224,8 @@ class CelebrationOverlay extends Overlay
 				}
 				switch (choice)
 				{
-				// A statistic that is switched off, or has nothing to report, leaves its slot empty
-				// rather than showing a labelled dash.
+				// A statistic that is switched off leaves its slot empty rather than showing a
+				// labelled dash; one that is switched on keeps its place even with nothing to show.
 				case COLLECTION_COUNT:
 					if (!totalVisible)
 					{
@@ -237,16 +237,21 @@ class CelebrationOverlay extends Overlay
 																	   : c.provisionalTotal);
 					break;
 				case KILL_COUNT:
-					if (!kcVisible || c.kc == null || c.kc.isBlank())
-					{
-						continue;
-					}
-					value = c.kc.replaceFirst("^[^:]+: *", "");
-					if (value.isBlank())
+					if (!kcVisible)
 					{
 						continue;
 					}
 					label = "KILL COUNT";
+					// A bought item, or a source that keeps no count, holds its slot with a dash so
+					// that the other three statistics stay where the player expects them.
+					if (c.kc != null)
+					{
+						String kills = c.kc.replaceFirst("^[^:]+: *", "");
+						if (!kills.isBlank())
+						{
+							value = kills;
+						}
+					}
 					break;
 				case VALUE:
 					if (!valueVisible)

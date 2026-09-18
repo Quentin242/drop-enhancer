@@ -45,6 +45,35 @@ public class PopupImageTest
 	}
 
 	@Test
+	public void anEnabledKillCountHoldsItsSlotWithoutACount()
+	{
+		Celebration c = new Celebration("Example", -1, 1, "Boss", false, 0, 0, 0);
+		c.tier = PreviewTier.COMMON;
+		c.confirmedTotal = 3;
+		c.value = 120000;
+		c.wikiCompletion = 12.5;
+		c.dropRateText = "1/512";
+		CelebrationConfig config = new CelebrationConfig() {};
+		c.kc = "Kills: 347";
+		int[] counted = effectPixels(c, config, 1200);
+		c.kc = null;
+		int[] uncounted = effectPixels(c, config, 1200);
+		assertFalse("Without a count the slot must read differently", java.util.Arrays.equals(counted, uncounted));
+		// The panel is drawn at x=10,y=10, so the top-right slot covers image x 307-463, y 111-141.
+		for (int y = 0; y < 260; y++)
+		{
+			for (int x = 0; x < 510; x++)
+			{
+				if (x >= 300 && x <= 470 && y >= 105 && y <= 150)
+				{
+					continue;
+				}
+				assertEquals("The other statistics must not move", counted[y * 510 + x], uncounted[y * 510 + x]);
+			}
+		}
+	}
+
+	@Test
 	public void switchedOffStatisticsLeaveNothingBehind()
 	{
 		Celebration c = new Celebration("Example", -1, 1, "Boss", false, 0, 0, 0);
