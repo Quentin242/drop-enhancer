@@ -817,6 +817,14 @@ public class CelebrationFlowTest
 		p.cox.client = p.client;
 		p.cox.config = p.config;
 		when(p.config.hideCoxRewards()).thenReturn(true);
+		// Inside the Chambers: nothing is held anywhere else.
+		when(p.client.getVarbitValue(net.runelite.api.gameval.VarbitID.RAIDS_CLIENT_INDUNGEON)).thenReturn(1);
+		p.cox.tick();
+		p.clientThread = mock(net.runelite.client.callback.ClientThread.class);
+		doAnswer(a -> {
+			((Runnable)a.getArgument(0)).run();
+			return null;
+		}).when(p.clientThread).invoke(any(Runnable.class));
 	}
 
 	@Test
@@ -831,6 +839,77 @@ public class CelebrationFlowTest
 		// No case opening to wait for, so the chest alone is the reveal.
 		chestOpened();
 		assertEquals("Twisted bow", release().name);
+	}
+
+	@Test
+	public void switchingTheOptionOffPutsTheChatBackAndReleasesTheDrop()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(false);
+		queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+
+		when(p.config.hideCoxRewards()).thenReturn(false);
+		net.runelite.client.events.ConfigChanged event = new net.runelite.client.events.ConfigChanged();
+		event.setGroup("collection-celebrations");
+		event.setKey("hideCoxRewards");
+		p.onConfigChanged(event);
+		assertEquals("Nothing may stay hidden once the option is off", "Twisted bow", release().name);
+	}
+
+	@Test
+	public void aUniqueTakenFromAnOpenedChestIsNotHeldAgain()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(false);
+		// The chest is open, so its loot is the reveal and must not re-arm the hold.
+		chestOpened();
+		queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+		assertEquals("Twisted bow", release().name);
+	}
+
+	@Test
+	public void aUniqueIsHeldEvenWhenNoAnnouncementWasSeen()
+	{
+		realCoxGate();
+		when(p.gate.blocked()).thenReturn(false);
+		// Straight to the unlock, as the notification script does, without any chat line first.
+		p.onChatMessage(unlockMessage("Twisted bow"));
+		p.time += 1500;
+		p.onBeforeRender(new BeforeRender());
+		verify(p.overlay, never()).show(any(), anyLong());
+		chestOpened();
+		assertEquals("Twisted bow", release().name);
+	}
+
+	private ChatMessage unlockMessage(String name)
+	{
+		ChatMessage e = new ChatMessage();
+		e.setType(ChatMessageType.GAMEMESSAGE);
+		e.setMessage("New item added to your collection log: " + name);
+		return e;
+	}
+
+	@Test
+	public void privateStorageOrTheBankAlsoReleaseAHeldUnique()
+	{
+		// Walking past the chest to storage or the bank means the raid is over either way.
+		for (int group : new int[] {271, 12})
+		{
+			setup();
+			realCoxGate();
+			when(p.gate.blocked()).thenReturn(false);
+			queuedItem(1, "Twisted bow", RarityTier.RARE, 1000000, 1, true);
+			p.time += 1500;
+			p.onBeforeRender(new BeforeRender());
+			verify(p.overlay, never()).show(any(), anyLong());
+			net.runelite.api.events.WidgetLoaded event = new net.runelite.api.events.WidgetLoaded();
+			event.setGroupId(group);
+			p.onWidgetLoaded(event);
+			assertEquals("Twisted bow", release().name);
+		}
 	}
 
 	@Test

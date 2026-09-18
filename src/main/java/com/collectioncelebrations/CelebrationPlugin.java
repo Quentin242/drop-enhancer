@@ -61,6 +61,10 @@ public class CelebrationPlugin extends Plugin
 	// collection_delayed_transmit; no named constant is exposed by RuneLite ScriptID.
 	private static final int COLLECTION_DELAYED_TRANSMIT = 4100;
 	private static final String UNLOCK = "New item added to your collection log: ";
+	private static final Set<ChatMessageType> ANNOUNCEMENTS =
+		Set.of(ChatMessageType.GAMEMESSAGE, ChatMessageType.SPAM, ChatMessageType.CLAN_MESSAGE,
+			   ChatMessageType.CLAN_GIM_MESSAGE, ChatMessageType.CLAN_GUEST_MESSAGE,
+			   ChatMessageType.FRIENDSCHATNOTIFICATION);
 	private static final int[] PAINT = {InterfaceID.NotificationDisplay.BACKGROUND, InterfaceID.NotificationDisplay.FRAME,
 										InterfaceID.NotificationDisplay.TITLE,		InterfaceID.NotificationDisplay.TITLE_TEXT,
 										InterfaceID.NotificationDisplay.MAIN,		InterfaceID.NotificationDisplay.MAIN_TEXT};
@@ -175,6 +179,7 @@ public class CelebrationPlugin extends Plugin
 	public void onGameTick(GameTick e)
 	{
 		gate.refresh();
+		cox.tick();
 		recentLoot.values().removeIf(c -> now() - c.created > 5000);
 	}
 
@@ -185,7 +190,10 @@ public class CelebrationPlugin extends Plugin
 		{
 			gate.noteDoomInterface();
 		}
-		if (e.getGroupId() == InterfaceID.RAIDS_REWARDS)
+		// The chest is the intended reveal, but private storage and the bank mean the player has
+		// moved on without it; leaving a unique hidden for the rest of the session helps nobody.
+		if (e.getGroupId() == InterfaceID.RAIDS_REWARDS || e.getGroupId() == InterfaceID.RAIDS_STORAGE_PRIVATE
+			|| e.getGroupId() == InterfaceID.BANKMAIN)
 		{
 			cox.noteChestOpened();
 		}
@@ -277,6 +285,12 @@ public class CelebrationPlugin extends Plugin
 				attachKc(c);
 			}
 		}
+		// A raid names its unique in the game chat, in the valuable drop line and to the clan or
+		// friends chat when a team mate gets it. Only server-sent types, so nobody can fake one.
+		if (ANNOUNCEMENTS.contains(e.getType()))
+		{
+			cox.hide(Text.removeTags(e.getMessage()), e.getMessageNode());
+		}
 		if (e.getType() != ChatMessageType.GAMEMESSAGE && e.getType() != ChatMessageType.SPAM)
 		{
 			return;
@@ -286,16 +300,13 @@ public class CelebrationPlugin extends Plugin
 		{
 			return;
 		}
-		String unlocked = message.substring(UNLOCK.length()).trim();
-		if (cox.covers(unlocked))
-		{
-			cox.censor(e.getMessageNode());
-		}
-		unlock(unlocked);
+		unlock(message.substring(UNLOCK.length()).trim());
 	}
 
 	private void unlock(String name)
 	{
+		// Armed before the repeat guard: a second notification for the same slot must still hold.
+		cox.arm(name);
 		if (name.isEmpty() || !notifiedUnlocks.add(name.toLowerCase(Locale.ROOT)))
 		{
 			return;
@@ -529,6 +540,13 @@ public class CelebrationPlugin extends Plugin
 	{
 		if (!"collection-celebrations".equals(event.getGroup()))
 		{
+			return;
+		}
+		if ("hideCoxRewards".equals(event.getKey()))
+		{
+			// Switching the option off must put back every line it blanked, chest or no chest.
+			// This arrives on the Swing thread, and the chat may only be touched on the client one.
+			clientThread.invoke(cox::noteChestOpened);
 			return;
 		}
 		if ("refreshWikiData".equals(event.getKey()))

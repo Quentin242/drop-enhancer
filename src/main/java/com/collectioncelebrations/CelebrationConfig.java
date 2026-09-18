@@ -23,7 +23,7 @@ public interface CelebrationConfig extends Config
 				section = celebrations, position = 3)
 	default boolean hideCoxRewards()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigSection(name = "Popup & effects", description = "Position, animation effects, text, colours and statistics", position = 1,

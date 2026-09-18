@@ -23,6 +23,8 @@ Open pages of your collection log so the plugin can read your item quantities. T
 
 **Refresh wiki data** — **on by default.** The plugin downloads public item lists, completion percentages and drop rates from `oldschool.runescape.wiki`, refreshed weekly on the Thursday after the Wednesday game update. This contacts a third-party server that is not controlled or verified by the RuneLite developers, so the wiki receives your IP address as it would for any web request. No player name, collection contents or other personal data is ever sent. Turn the setting off to stop all wiki requests; existing data is kept if a refresh fails. Wiki data is CC BY-NC-SA 3.0 by OSRS Wiki contributors and is not bundled with the plugin.
 
+**Hide CoX rewards** — on by default. Chambers of Xeric announces a unique while the team is still walking to the chest, so the chat line is censored and the popup and its sound wait until the reward chest is opened. Other raids send their collection log only after the chest and are unaffected.
+
 **Drop rate** is shown for the matching source. Guaranteed drops and items the wiki does not list leave the statistic out; variants the game does not name show a range such as `1/18 – 1/19`. Rates are for display and never change rarity colours or sounds.
 
 ## Credits
